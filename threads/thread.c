@@ -320,47 +320,48 @@ thread_sleep(int64_t start, int64_t ticks) {
 
 	ASSERT (!intr_context ());
 
-	printf("Here1\n");
+	//printf("Here1\n");
 
 	old_level = intr_disable ();
-	printf("Here2\n");
+	//printf("Here2\n");
 	if (curr != idle_thread)
 	{
+	//	printf("Here3\n");
 		list_push_back (&sleep_list, &curr->elem);
-		curr->status = THREAD_BLOCKED;
 		curr->time_awake = start + ticks;
-		printf("Here3\n");
+		thread_block();
 	}
-	do_schedule (THREAD_READY);
-	printf("Here4\n");
+	//printf("Here4\n");
 	intr_set_level (old_level);
 
-	printf("%llu", curr->time_awake);
+	//printf("%llu", curr->time_awake);
 }
 
 /* Awake threads which has passed an expected time from sleep. */
 void
 thread_awake(int64_t ticks) {
 	struct list_elem *e;
-	printf("Fucking PintOS\n");
-	printf("%d\n", list_empty(&sleep_list));
-	while (!list_empty(&sleep_list))
+	// printf("Fucking PintOS\n");
+
+	e = list_begin(&sleep_list);
+
+	while (e != list_end(&sleep_list))
 	{
-		printf("%d", list_size(&sleep_list));
-		for (e = list_begin (&sleep_list); e != list_end (&sleep_list); e = list_next (e)) 
+	//	printf("Case 1\n");
+		struct thread *curr = list_entry (e, struct thread, elem);
+	//	printf("Case 2\n");
+	//	printf("%llu\n", curr->time_awake);
+	//	printf("%llu\n", ticks);
+		if (curr->time_awake <= ticks)
 		{
-			printf("Case 1\n");
-			struct thread *curr = list_entry (e, struct thread, elem);
-			printf("%llu\n", curr->time_awake);
-			printf("Case 2\n");
-			printf("%llu\n", curr->time_awake);
-			if (curr->time_awake <= ticks)
-			{
-				list_push_back(&ready_list, &curr->elem);
-				curr->status = THREAD_READY;
-				printf("Case 3\n");
-			}
-			printf("Case 4\n");
+			e = list_remove(e);
+			thread_unblock(curr);
+	//		printf("Case 3\n");
+		}
+		else
+		{
+			e = list_next(e);
+	//		printf("Case 4\n");
 		}
 	}
 }
