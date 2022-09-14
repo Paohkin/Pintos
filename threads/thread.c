@@ -28,6 +28,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* List of processes which are in sleep mode. */
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -109,6 +112,7 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
+	list_init(&sleep_list);
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -306,6 +310,59 @@ thread_yield (void) {
 		list_push_back (&ready_list, &curr->elem);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
+}
+
+/* Sleeps the current thread until an expected time passes. */
+void
+thread_sleep(int64_t start, int64_t ticks) {
+	struct thread *curr = thread_current ();
+	enum intr_level old_level;
+
+	ASSERT (!intr_context ());
+
+	printf("Here1\n");
+
+	old_level = intr_disable ();
+	printf("Here2\n");
+	if (curr != idle_thread)
+	{
+		list_push_back (&sleep_list, &curr->elem);
+		curr->status = THREAD_BLOCKED;
+		curr->time_awake = start + ticks;
+		printf("Here3\n");
+	}
+	do_schedule (THREAD_READY);
+	printf("Here4\n");
+	intr_set_level (old_level);
+
+	printf("%llu", curr->time_awake);
+}
+
+/* Awake threads which has passed an expected time from sleep. */
+void
+thread_awake(int64_t ticks) {
+	struct list_elem *e;
+	printf("Fucking PintOS\n");
+	printf("%d\n", list_empty(&sleep_list));
+	while (!list_empty(&sleep_list))
+	{
+		printf("%d", list_size(&sleep_list));
+		for (e = list_begin (&sleep_list); e != list_end (&sleep_list); e = list_next (e)) 
+		{
+			printf("Case 1\n");
+			struct thread *curr = list_entry (e, struct thread, elem);
+			printf("%llu\n", curr->time_awake);
+			printf("Case 2\n");
+			printf("%llu\n", curr->time_awake);
+			if (curr->time_awake <= ticks)
+			{
+				list_push_back(&ready_list, &curr->elem);
+				curr->status = THREAD_READY;
+				printf("Case 3\n");
+			}
+			printf("Case 4\n");
+		}
+	}
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
