@@ -353,7 +353,9 @@ priority_less(const struct list_elem *a_, const struct list_elem *b_, void *aux 
 	return a->priority > b->priority;
 }
 
-/* Re */
+/* Returns true if semaphore of list_elem A has a higher priority than
+   semaphore of list_elem B. The priority of semaphore means a priority
+   of its highest priority thread in waiters. */
 static bool
 priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
