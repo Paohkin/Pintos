@@ -48,6 +48,9 @@ static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
+/* Priority compare function. */
+static bool priority_less(const struct list_elem *, const struct list_elem *, void *);
+
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
@@ -211,7 +214,21 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	/* Yield if the created thread has a higher priority. */
+	if (priority > thread_current()->priority)
+		thread_yield();
+
 	return tid;
+}
+
+/* Returns true if priority B is less than priority A, true otherwise. */
+static bool
+priority_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	return a->priority > b->priority;
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -244,7 +261,7 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, priority_less, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -307,7 +324,7 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, priority_less, NULL);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -339,11 +356,11 @@ thread_awake(int64_t ticks) {
 
 	while (e != list_end(&sleep_list))
 	{
-		struct thread *curr = list_entry (e, struct thread, elem);
-		if (curr->time_awake <= ticks)
+		struct thread *t = list_entry (e, struct thread, elem);
+		if (t->time_awake <= ticks)
 		{
 			e = list_remove(e);
-			thread_unblock(curr);
+			thread_unblock(t);
 		}
 		else
 			e = list_next(e);
@@ -353,13 +370,33 @@ thread_awake(int64_t ticks) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
+	struct list_elem *e;
+
 	thread_current ()->priority = new_priority;
+	e = list_begin(&ready_list);
+
+	if (!list_empty(&ready_list))
+	{
+		struct thread *t = list_entry(e, struct thread, elem);
+		if (t->priority > new_priority)
+			thread_yield();
+	}
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
-	return thread_current ()->priority;
+	int priority;
+	struct thread *curr = thread_current();
+
+	if (curr->status == THREAD_BLOCKED)
+	{
+
+	}
+	else
+		priority = curr->priority;
+
+	return priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
