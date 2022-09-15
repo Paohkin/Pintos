@@ -393,8 +393,25 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 		cond_signal (cond, lock);
 }
 
+<<<<<<< HEAD
+/* Returns true if priority B is less than priority A, true otherwise. */
+static bool
+priority_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	return a->priority > b->priority;
+}
+
+/* Returns true if semaphore of list_elem A has a higher priority than
+   semaphore of list_elem B. The priority of semaphore means a priority
+   of its highest priority thread in waiters. */
+static bool
+=======
 /* Re */
 bool
+>>>>>>> 14e94a798cdea0b02454df426b38b2a3de5b930d
 priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
 	const struct semaphore_elem *a = list_entry(a_, struct semaphore_elem, elem);

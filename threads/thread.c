@@ -340,7 +340,7 @@ thread_sleep(int64_t start, int64_t ticks) {
 	old_level = intr_disable ();
 	if (curr != idle_thread)
 	{
-		list_push_back (&sleep_list, &curr->elem);
+		list_insert_ordered(&sleep_list, &curr->elem, priority_less, NULL);
 		curr->time_awake = start + ticks;
 		thread_block();
 	}
