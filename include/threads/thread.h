@@ -96,6 +96,13 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	/* -------------------- Project 1 -------------------- */
+	int origin_priority;                /* Original priority */
+	struct list donors;					/* List of priority donors */
+	struct list_elem donors_elem;		/* element of list above */
+	struct lock *want_to_acquire;		/* Lock that this thread want_to_acquire */
+	/* -------------------- Project 1 -------------------- */
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -123,6 +130,8 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
+
+bool priority_less(const struct list_elem *, const struct list_elem *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
