@@ -116,6 +116,7 @@ sema_up (struct semaphore *sema) {
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters))
 	{
+		list_sort(&sema->waiters, priority_sema, NULL);
 		e = list_pop_front(&sema->waiters);
 		t = list_entry(e, struct thread, elem);
 		thread_unblock(t);
@@ -226,7 +227,7 @@ lock_acquire (struct lock *lock) {
 	sema_down (&lock->semaphore);
 
 	/* -------------------- Project 1 -------------------- */
-	lock->holder = curr;
+	lock->holder = thread_current();
 	curr->want_to_acquire = NULL;
 	intr_set_level (old_level);
 	/* -------------------- Project 1 -------------------- */
@@ -393,25 +394,8 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 		cond_signal (cond, lock);
 }
 
-<<<<<<< HEAD
-/* Returns true if priority B is less than priority A, true otherwise. */
-static bool
-priority_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
-{
-	const struct thread *a = list_entry(a_, struct thread, elem);
-	const struct thread *b = list_entry(b_, struct thread, elem);
-
-	return a->priority > b->priority;
-}
-
-/* Returns true if semaphore of list_elem A has a higher priority than
-   semaphore of list_elem B. The priority of semaphore means a priority
-   of its highest priority thread in waiters. */
-static bool
-=======
 /* Re */
 bool
->>>>>>> 14e94a798cdea0b02454df426b38b2a3de5b930d
 priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
 	const struct semaphore_elem *a = list_entry(a_, struct semaphore_elem, elem);
