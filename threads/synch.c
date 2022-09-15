@@ -394,7 +394,9 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 		cond_signal (cond, lock);
 }
 
-/* Re */
+/* Returns true if semaphore of A has a higher priority than
+   semaphore of B. Priority of semaphore means a priority of
+   the highest priority current which is in waiters. */
 bool
 priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
