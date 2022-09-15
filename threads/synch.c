@@ -33,9 +33,7 @@
 #include "threads/thread.h"
 
 /* Priority compare function. */
-static bool priority_less(const struct list_elem *, const struct list_elem *, void *);
-
-static bool priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+bool priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -204,6 +202,9 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
 	/* -------------------- Project 1 -------------------- */
 	struct thread *curr = thread_current();
 	if(lock->holder){
@@ -227,6 +228,7 @@ lock_acquire (struct lock *lock) {
 	/* -------------------- Project 1 -------------------- */
 	lock->holder = curr;
 	curr->want_to_acquire = NULL;
+	intr_set_level (old_level);
 	/* -------------------- Project 1 -------------------- */
 }
 
@@ -260,6 +262,9 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
 	/* -------------------- Project 1 -------------------- */
 	struct thread *curr = thread_current();
 	if(!list_empty(&curr->donors)){
@@ -283,6 +288,7 @@ lock_release (struct lock *lock) {
 
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
+	intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -386,18 +392,8 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 		cond_signal (cond, lock);
 }
 
-/* Returns true if priority B is less than priority A, true otherwise. */
-static bool
-priority_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
-{
-	const struct thread *a = list_entry(a_, struct thread, elem);
-	const struct thread *b = list_entry(b_, struct thread, elem);
-
-	return a->priority > b->priority;
-}
-
 /* Re */
-static bool
+bool
 priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
 	const struct semaphore_elem *a = list_entry(a_, struct semaphore_elem, elem);
