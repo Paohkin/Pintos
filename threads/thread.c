@@ -383,7 +383,7 @@ thread_set_priority (int new_priority) {
 		curr->priority = curr->origin_priority > great->priority ? curr->origin_priority : great->priority;
 	}
 
-	if (!list_empty(&ready_list)){
+	if(!list_empty(&ready_list)){
 		e = list_begin(&ready_list);
 		struct thread *t = list_entry(e, struct thread, elem);
 		if (t->priority > new_priority){

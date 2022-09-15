@@ -279,6 +279,7 @@ lock_release (struct lock *lock) {
 			}
 		}
 	}
+	curr->priority = curr->origin_priority;
 	if(!list_empty(&curr->donors)){
 		list_sort(&curr->donors, priority_less, NULL);
 		struct thread *great = list_entry(list_front(&curr->donors), struct thread, donors_elem);
