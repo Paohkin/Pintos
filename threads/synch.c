@@ -188,8 +188,30 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	/* -------------------- Project 1 -------------------- */
+	struct thread *curr = thread_current();
+	if(lock->holder){
+		curr->want_to_acquire = lock;
+		list_insert_ordered(&lock->holder->donors, &curr->donors_elem, priority_less, NULL);
+		/* priority donation */
+		int depth = 0;
+		for(; depth < 8; depth++){
+			if(curr->want_to_acquire){
+				struct thread *lock_holder = curr->want_to_acquire->holder;
+				lock_holder->priority = curr->priority;
+				curr = lock_holder;
+			}
+			else break;
+		}
+	}
+	/* -------------------- Project 1 -------------------- */
+
 	sema_down (&lock->semaphore);
-	lock->holder = thread_current ();
+
+	/* -------------------- Project 1 -------------------- */
+	lock->holder = curr;
+	curr->want_to_acquire = NULL;
+	/* -------------------- Project 1 -------------------- */
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -221,6 +243,27 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
+
+	/* -------------------- Project 1 -------------------- */
+	struct thread *curr = thread_current();
+	if(!list_empty(&curr->donors)){
+		struct list_elem *e = list_begin(&curr->donors);
+		while(e != list_end(&curr->donors)){ // clean up donors
+			struct thread *t = list_entry(e, struct thread, donors_elem);
+			if(t->want_to_acquire == lock){
+				e = list_remove(e);
+			}
+			else{
+				e = list_next(e);
+			}
+		}
+	}
+	if(!list_empty(&curr->donors)){
+		list_sort(&curr->donors, priority_less, NULL);
+		struct thread *great = list_entry(list_front(&curr->donors), struct thread, donors_elem);
+		curr->priority = curr->origin_priority > great->priority ? curr->origin_priority : great->priority;
+	}
+	/* -------------------- Project 1 -------------------- */
 
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);

@@ -49,7 +49,7 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Priority compare function. */
-static bool priority_less(const struct list_elem *, const struct list_elem *, void *);
+bool priority_less(const struct list_elem *, const struct list_elem *, void *);
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -222,7 +222,7 @@ thread_create (const char *name, int priority,
 }
 
 /* Returns true if priority B is less than priority A, true otherwise. */
-static bool
+bool
 priority_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
 	const struct thread *a = list_entry(a_, struct thread, elem);
@@ -370,31 +370,33 @@ thread_awake(int64_t ticks) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
+	/* -------------------- Project 1 -------------------- */
+	struct thread *curr = thread_current();
 	struct list_elem *e;
+	curr->priority = new_priority;	
+	curr->origin_priority = new_priority;
 
-	thread_current ()->priority = new_priority;
-	e = list_begin(&ready_list);
-
-	if (!list_empty(&ready_list))
-	{
-		struct thread *t = list_entry(e, struct thread, elem);
-		if (t->priority > new_priority)
-			thread_yield();
+	if(!list_empty(&curr->donors)){
+		e = list_begin(&curr->donors);
+		list_sort(&curr->donors, priority_less, NULL);
+		struct thread *great = list_entry(list_front(&curr->donors), struct thread, donors_elem);
+		curr->priority = curr->origin_priority > great->priority ? curr->origin_priority : great->priority;
 	}
+
+	if (!list_empty(&ready_list)){
+		e = list_begin(&ready_list);
+		struct thread *t = list_entry(e, struct thread, elem);
+		if (t->priority > new_priority){
+			thread_yield();
+		}
+	}
+	/* -------------------- Project 1 -------------------- */
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
-	int priority;
-	struct thread *curr = thread_current();
-
-	if (curr->status == THREAD_BLOCKED)
-	{
-
-	}
-	else
-		priority = curr->priority;
+	int priority = thread_current()->priority;
 
 	return priority;
 }
@@ -488,6 +490,12 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	/* -------------------- Project 1 -------------------- */
+	t->origin_priority = priority;      /* Original priority */
+	list_init(&t->donors);				/* List of priority donors */
+	t->want_to_acquire = NULL;			/* Lock that this thread want_to_acquire */
+	/* -------------------- Project 1 -------------------- */
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
