@@ -40,7 +40,7 @@ void cond_broadcast (struct condition *, struct lock *);
 
 
 /* Compare priority of semaphore. */
-bool priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+bool priority_sema(const struct list_elem *, const struct list_elem *, void *);
 
 /* Optimization barrier.
  *

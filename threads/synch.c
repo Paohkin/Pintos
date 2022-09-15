@@ -400,14 +400,14 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 bool
 priority_sema(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
 {
-	const struct semaphore_elem *a = list_entry(a_, struct semaphore_elem, elem);
-	const struct semaphore_elem *b = list_entry(b_, struct semaphore_elem, elem);
+	struct semaphore_elem *a = list_entry(a_, struct semaphore_elem, elem);
+	struct semaphore_elem *b = list_entry(b_, struct semaphore_elem, elem);
 
-	const struct list_elem *p = list_begin(&a->semaphore.waiters);
-	const struct list_elem *q = list_begin(&b->semaphore.waiters);
+	struct list_elem *p = list_begin(&a->semaphore.waiters);
+	struct list_elem *q = list_begin(&b->semaphore.waiters);
 
-	const struct thread *m = list_entry(p, struct thread, elem);
-	const struct thread *n = list_entry(q, struct thread, elem);
+	struct thread *m = list_entry(p, struct thread, elem);
+	struct thread *n = list_entry(q, struct thread, elem);
 
 	return m->priority > n->priority;
 }
