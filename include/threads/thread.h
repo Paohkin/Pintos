@@ -28,6 +28,13 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Project 1. */
+#define NICE_MIN -20					/* Lowest nice value. */
+#define NICE_DEFAULT 0					/* Default nice value. */
+#define NICE_MAX 20						/* Highest nice value. */
+#define RECENT_CPU_DEFAULT 0			/* Default recent cpu value. */
+#define LOAD_AVG_DEFAULT 0				/* Default load avg value. */
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -101,6 +108,8 @@ struct thread {
 	struct list donors;					/* List of priority donors */
 	struct list_elem donors_elem;		/* element of list above */
 	struct lock *want_to_acquire;		/* Lock that this thread want_to_acquire */
+	int nice;							/* Nice value. */
+	int recent_cpu;						/* Recent cpu value. */
 	/* -------------------- Project 1 -------------------- */
 
 #ifdef USERPROG
