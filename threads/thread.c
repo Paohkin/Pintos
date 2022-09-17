@@ -13,6 +13,7 @@
 #include "intrinsic.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "threads/fixed-point.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -23,6 +24,8 @@
 /* Random value for basic thread
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
+
+#define f 1 << 14 /* 17.14 fixed-point number repsesentation*/
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -196,8 +199,11 @@ thread_create (const char *name, int priority,
 	if (t == NULL)
 		return TID_ERROR;
 
-	/* Initialize thread. */
-	init_thread (t, name, priority);
+	/* Initialize thread. Ignore priority argument if thread_mlfqs is ture. */
+	if (thread_mlfqs)
+		init_thread(t, name, PRI_DEFAULT);
+	else
+		init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
@@ -376,6 +382,10 @@ thread_set_priority (int new_priority) {
 	curr->priority = new_priority;	
 	curr->origin_priority = new_priority;
 
+	/* Ignore if thread_mlfqs is true. */
+	if (thread_mlfqs)
+		return;
+
 	if(!list_empty(&curr->donors)){
 		e = list_begin(&curr->donors);
 		list_sort(&curr->donors, priority_less, NULL);
@@ -404,19 +414,23 @@ thread_get_priority (void) {
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) {
-	/* TODO: Your implementation goes here */
+	struct thread *curr = thread_current();
+
+	curr->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) {
-	/* TODO: Your implementation goes here */
-	return 0;
+	int nice = thread_current()->nice;
+
+	return nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
+
 	/* TODO: Your implementation goes here */
 	return 0;
 }
@@ -495,6 +509,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->origin_priority = priority;      /* Original priority */
 	list_init(&t->donors);				/* List of priority donors */
 	t->want_to_acquire = NULL;			/* Lock that this thread want_to_acquire */
+	t->nice = NICE_DEFAULT;				/* Set nice value as default 0. */
+	t->recent_cpu = RECENT_CPU_DEFAULT; /* Set recent cpu value as default 0. */
 	/* -------------------- Project 1 -------------------- */
 }
 
@@ -674,4 +690,53 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+/* Fixed-point functions. */
+int
+convert_to_fp(int n) {
+	return n * f;
+}
+int
+convert_to_int_zero(int x) {
+	return x / f;
+}
+int
+convert_to_int_near(int x) {
+	if (x >= 0)
+		return (x + f / 2) / f;
+	else
+		return (x - f / 2) / f;
+}
+int 
+add_fp(int x, int y) {
+	return x + y;
+}
+int 
+sub_fp(int x, int y) {
+	return x - y;
+}
+int 
+add_int(int x, int n) {
+	return x + n * f;
+}
+int 
+sub_int(int x, int n) {
+	return x - n * f;
+}
+int 
+mul_fp(int x, int y) {
+	return ((int64_t) x) * y / f;
+}
+int 
+mul_int(int x, int n) {
+	return x * n;
+}
+int 
+div_fp(int x, int y) {
+	return ((int64_t) x) * y / f;
+}
+int 
+div_int(int x, int n) {
+	return x / n;
 }
