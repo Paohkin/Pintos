@@ -13,7 +13,6 @@
 #include "intrinsic.h"
 #ifdef USERPROG
 #include "userprog/process.h"
-#include "threads/fixed-point.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -25,7 +24,20 @@
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
 
-#define f 1 << 14 /* 17.14 fixed-point number repsesentation*/
+/* Fixed-point functions, for mlfqs */
+#define F (1 << 14) /* 1, by fixed-point number representation */
+#define CONV_TO_FP(n) ((n) * F)
+#define CONV_TO_INT_NEAR(x) (x) >= 0 ? (((x) + F / 2) / F) : (((x) - F / 2) / F)
+#define ADD_FP(x, y) ((x) + (y))
+#define SUB_FP(x, y) ((x) - (y))
+#define MUL_FP(x, y) (int)(((int64_t)(x)) * (y) / F)
+#define DIV_FP(x, y) (int)(((int64_t)(x)) * F / (y))
+#define ADD_INT(x, n) ((x) + CONV_TO_FP(n))
+#define SUB_INT(x, n) ((x) - CONV_TO_FP(n))
+#define MUL_INT(x, n) ((x) * (n))
+#define DIV_INT(x, n) ((x) / (n))
+
+int load_avg;
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -50,9 +62,6 @@ static struct list destruction_req;
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
-
-/* Priority compare function. */
-bool priority_less(const struct list_elem *, const struct list_elem *, void *);
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -117,6 +126,7 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	load_avg = LOAD_AVG_DEFAULT;
 	list_init (&destruction_req);
 	list_init(&sleep_list);
 
@@ -379,6 +389,7 @@ thread_set_priority (int new_priority) {
 	/* -------------------- Project 1 -------------------- */
 	struct thread *curr = thread_current();
 	struct list_elem *e;
+	struct thread *t;
 	curr->priority = new_priority;	
 	curr->origin_priority = new_priority;
 
@@ -386,6 +397,7 @@ thread_set_priority (int new_priority) {
 	if (thread_mlfqs)
 		return;
 
+	/* consider donors' priority */
 	if(!list_empty(&curr->donors)){
 		e = list_begin(&curr->donors);
 		list_sort(&curr->donors, priority_less, NULL);
@@ -393,10 +405,11 @@ thread_set_priority (int new_priority) {
 		curr->priority = curr->origin_priority > great->priority ? curr->origin_priority : great->priority;
 	}
 
+	/* consider ready_list's priority */
 	if(!list_empty(&ready_list)){
 		e = list_begin(&ready_list);
-		struct thread *t = list_entry(e, struct thread, elem);
-		if (t->priority > new_priority){
+		t = list_entry(e, struct thread, elem);
+		if(t->priority > curr->priority){
 			thread_yield();
 		}
 	}
@@ -406,40 +419,44 @@ thread_set_priority (int new_priority) {
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
-	int priority = thread_current()->priority;
-
-	return priority;
+	return thread_current()->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) {
+thread_set_nice (int nice) {
 	struct thread *curr = thread_current();
-
+	struct list_elem *e;
+	struct thread *t;
 	curr->nice = nice;
+	curr->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(curr->recent_cpu), 4), (PRI_MAX - (curr->nice) * 2)));
+
+	/* consider ready_list's priority */
+	if(!list_empty(&ready_list)){
+		e = list_begin(&ready_list);
+		t = list_entry(e, struct thread, elem);
+		if(t->priority > curr->priority){
+			thread_yield();
+		}
+	}
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) {
-	int nice = thread_current()->nice;
-
-	return nice;
+	return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
-
-	/* TODO: Your implementation goes here */
-	return 0;
+	return CONV_TO_INT_NEAR(MUL_INT(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) {
-	/* TODO: Your implementation goes here */
-	return 0;
+	return CONV_TO_INT_NEAR(MUL_INT(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -692,51 +709,74 @@ allocate_tid (void) {
 	return tid;
 }
 
-/* Fixed-point functions. */
-int
-convert_to_fp(int n) {
-	return n * f;
+/* -------------------- Project 1 -------------------- */
+void
+mlfqs_prio_calc(void){
+	struct list_elem *e;
+	struct thread *t;
+	if(!list_empty(&ready_list)){
+		for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+			t = list_entry(e, struct thread, elem);
+			if(t != idle_thread){
+				t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
+			}
+		}
+	}
+	if(!list_empty(&sleep_list)){
+		for(e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
+			t = list_entry(e, struct thread, elem);
+			if(t != idle_thread){
+				t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
+			}
+		}
+	}
+	t = thread_current();
+	if(t != idle_thread){
+		t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
+	}
 }
-int
-convert_to_int_zero(int x) {
-	return x / f;
+
+void
+mlfqs_rec_cpu_calc(void){
+	struct list_elem *e;
+	struct thread *t;
+	if(!list_empty(&ready_list)){
+		for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+			t = list_entry(e, struct thread, elem);
+			if(t != idle_thread){
+				t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
+			}
+		}
+	}
+	if(!list_empty(&sleep_list)){
+		for(e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
+			t = list_entry(e, struct thread, elem);
+			if(t != idle_thread){
+				t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
+			}
+		}
+	}
+	t = thread_current();
+	if(t != idle_thread){
+		t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
+	}
 }
-int
-convert_to_int_near(int x) {
-	if (x >= 0)
-		return (x + f / 2) / f;
-	else
-		return (x - f / 2) / f;
+
+void
+mlfqs_rec_cpu_inc_per_sec(void){
+	struct thread *curr = thread_current();
+	if(curr != idle_thread){
+		curr->recent_cpu = ADD_INT(curr->recent_cpu, 1);
+	}
 }
-int 
-add_fp(int x, int y) {
-	return x + y;
+
+void
+mlfqs_load_avg_calc(void){
+	int ready_threads = list_size(&ready_list);;
+	struct thread *curr = thread_current();
+	if(curr != idle_thread){
+		ready_threads++;
+	}
+	load_avg = ADD_FP(MUL_FP(DIV_FP(CONV_TO_FP(59), CONV_TO_FP(60)), load_avg), MUL_INT(DIV_FP(CONV_TO_FP(1), CONV_TO_FP(60)), ready_threads));
 }
-int 
-sub_fp(int x, int y) {
-	return x - y;
-}
-int 
-add_int(int x, int n) {
-	return x + n * f;
-}
-int 
-sub_int(int x, int n) {
-	return x - n * f;
-}
-int 
-mul_fp(int x, int y) {
-	return ((int64_t) x) * y / f;
-}
-int 
-mul_int(int x, int n) {
-	return x * n;
-}
-int 
-div_fp(int x, int y) {
-	return ((int64_t) x) * y / f;
-}
-int 
-div_int(int x, int n) {
-	return x / n;
-}
+/* -------------------- Project 1 -------------------- */

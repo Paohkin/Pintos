@@ -131,6 +131,18 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	/* -------------------- Project 1 -------------------- */
+	if(thread_mlfqs){
+		mlfqs_rec_cpu_inc_per_sec();
+		if(!(timer_ticks() % 4)){
+			mlfqs_prio_calc();
+		}
+		if(!(timer_ticks() % TIMER_FREQ)){
+			mlfqs_load_avg_calc();
+			mlfqs_rec_cpu_calc();
+		}
+	}
+	/* -------------------- Project 1 -------------------- */
 	thread_awake(ticks);
 }
 

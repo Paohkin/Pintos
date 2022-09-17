@@ -32,8 +32,8 @@ typedef int tid_t;
 #define NICE_MIN -20					/* Lowest nice value. */
 #define NICE_DEFAULT 0					/* Default nice value. */
 #define NICE_MAX 20						/* Highest nice value. */
-#define RECENT_CPU_DEFAULT 0			/* Default recent cpu value. */
-#define LOAD_AVG_DEFAULT 0				/* Default load avg value. */
+#define RECENT_CPU_DEFAULT 0   			/* Default recent cpu value. */
+#define LOAD_AVG_DEFAULT 0 				/* Default load avg value. */
 
 /* A kernel thread or user process.
  *
@@ -161,6 +161,11 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void mlfqs_prio_calc(void);
+void mlfqs_rec_cpu_calc(void);
+void mlfqs_rec_cpu_inc_per_sec(void);
+void mlfqs_load_avg_calc(void);
 
 void do_iret (struct intr_frame *tf);
 

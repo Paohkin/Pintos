@@ -206,6 +206,14 @@ lock_acquire (struct lock *lock) {
 	enum intr_level old_level;
 	old_level = intr_disable ();
 
+	/* Ignore if thread_mlfqs is true. */
+	if(thread_mlfqs){
+		sema_down (&lock->semaphore);
+		lock->holder = thread_current();
+		intr_set_level (old_level);
+		return;
+	}
+
 	/* -------------------- Project 1 -------------------- */
 	struct thread *curr = thread_current();
 	if(lock->holder){
@@ -222,11 +230,7 @@ lock_acquire (struct lock *lock) {
 			else break;
 		}
 	}
-	/* -------------------- Project 1 -------------------- */
-
 	sema_down (&lock->semaphore);
-
-	/* -------------------- Project 1 -------------------- */
 	lock->holder = thread_current();
 	curr->want_to_acquire = NULL;
 	intr_set_level (old_level);
@@ -265,6 +269,14 @@ lock_release (struct lock *lock) {
 
 	enum intr_level old_level;
 	old_level = intr_disable ();
+
+	/* Ignore if thread_mlfqs is true. */
+	if(thread_mlfqs){
+		lock->holder = NULL;
+		sema_up (&lock->semaphore);
+		intr_set_level (old_level);
+		return;
+	}
 
 	/* -------------------- Project 1 -------------------- */
 	struct thread *curr = thread_current();
