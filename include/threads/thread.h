@@ -162,7 +162,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-void mlfqs_prio_calc(void);
+void mlfqs_prio_calc(struct thread *);
+void mlfqs_prio_calc_all(void);
 void mlfqs_rec_cpu_calc(void);
 void mlfqs_rec_cpu_inc_per_sec(void);
 void mlfqs_load_avg_calc(void);

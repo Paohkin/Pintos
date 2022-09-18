@@ -429,7 +429,10 @@ thread_set_nice (int nice) {
 	struct list_elem *e;
 	struct thread *t;
 	curr->nice = nice;
-	curr->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(curr->recent_cpu), 4), (PRI_MAX - (curr->nice) * 2)));
+	if(curr == idle_thread){
+		return;
+	}
+	mlfqs_prio_calc(curr);
 
 	/* consider ready_list's priority */
 	if(!list_empty(&ready_list)){
@@ -711,28 +714,35 @@ allocate_tid (void) {
 
 /* -------------------- Project 1 -------------------- */
 void
-mlfqs_prio_calc(void){
+mlfqs_prio_calc(struct thread *t){
+	t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
+	if(t->priority > 63){
+		t->priority = 63;
+	}
+	else if(t->priority < 0){
+		t->priority = 0;
+	}
+}
+
+void
+mlfqs_prio_calc_all(void){
 	struct list_elem *e;
 	struct thread *t;
 	if(!list_empty(&ready_list)){
 		for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
 			t = list_entry(e, struct thread, elem);
-			if(t != idle_thread){
-				t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
-			}
+			mlfqs_prio_calc(t);
 		}
 	}
 	if(!list_empty(&sleep_list)){
 		for(e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
 			t = list_entry(e, struct thread, elem);
-			if(t != idle_thread){
-				t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
-			}
+			mlfqs_prio_calc(t);
 		}
 	}
 	t = thread_current();
 	if(t != idle_thread){
-		t->priority = CONV_TO_INT_NEAR(ADD_INT(DIV_INT(-(t->recent_cpu), 4), (PRI_MAX - (t->nice) * 2)));
+		mlfqs_prio_calc(t);
 	}
 }
 
@@ -743,17 +753,13 @@ mlfqs_rec_cpu_calc(void){
 	if(!list_empty(&ready_list)){
 		for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
 			t = list_entry(e, struct thread, elem);
-			if(t != idle_thread){
-				t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
-			}
+			t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
 		}
 	}
 	if(!list_empty(&sleep_list)){
 		for(e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
 			t = list_entry(e, struct thread, elem);
-			if(t != idle_thread){
-				t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
-			}
+			t->recent_cpu = ADD_INT(MUL_FP(DIV_FP(MUL_INT(load_avg, 2), ADD_INT(MUL_INT(load_avg, 2), 1)), t->recent_cpu), t->nice);
 		}
 	}
 	t = thread_current();
@@ -772,7 +778,7 @@ mlfqs_rec_cpu_inc_per_sec(void){
 
 void
 mlfqs_load_avg_calc(void){
-	int ready_threads = list_size(&ready_list);;
+	int ready_threads = list_size(&ready_list);
 	struct thread *curr = thread_current();
 	if(curr != idle_thread){
 		ready_threads++;

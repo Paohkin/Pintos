@@ -135,7 +135,7 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	if(thread_mlfqs){
 		mlfqs_rec_cpu_inc_per_sec();
 		if(!(timer_ticks() % 4)){
-			mlfqs_prio_calc();
+			mlfqs_prio_calc_all();
 		}
 		if(!(timer_ticks() % TIMER_FREQ)){
 			mlfqs_load_avg_calc();
