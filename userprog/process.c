@@ -183,7 +183,7 @@ process_exec (void *f_name) {
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
-
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); //debug
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -204,6 +204,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while (true) {}
 	return -1;
 }
 
@@ -329,6 +330,21 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	/* Parse the file_name */
+	char *args[128];
+	char *token, *save_ptr;
+	int token_cnt = 1;
+
+	token = strtok_r(file_name, " ", &save_ptr);
+	args[0] = token;
+
+	for (token = strtok_r(NULL, " ", &save_ptr); token != NULL;
+		token = strtok_r(NULL, " ", &save_ptr))
+	{
+		args[token_cnt] = token;
+		token_cnt++;
+	}
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -416,6 +432,36 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+
+	/* Push to the stack. */
+	char *rsp_adr[128];
+	for (int i = token_cnt - 1; i >= 0; i--)
+	{
+		int arg_len = strlen(args[i]);
+		if_->rsp -= arg_len + 1;
+		memcpy(if_->rsp, args[i], arg_len + 1);
+		rsp_adr[i] = if_->rsp;
+	}
+
+	int r = if_->rsp % 8;
+	if_->rsp -= r;
+	memset(if_->rsp, 0, r);
+	
+	for (int i = token_cnt; i >= 0; i--)
+	{
+		if_->rsp -= 8;
+		if (i == token_cnt)
+			memset(if_->rsp, 0, 8);
+		else
+			memcpy(if_->rsp, &rsp_adr[i], 8);
+	}
+
+	if_->rsp -= 8;
+	memset(if_->rsp, 0, 8);
+
+	/* Point %rsi to args[0] and set %rdi to token_cnt */
+	if_->R.rsi = if_->rsp + 8;
+	if_->R.rdi = token_cnt;
 
 	success = true;
 

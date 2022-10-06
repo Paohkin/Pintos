@@ -41,6 +41,106 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+	/*
+	uint64_t syscall_num = f->R.rax;
+	uint64_t args[] = {f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9};
+	
+	switch (syscall_num)
+	{
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(args[0]);
+			break;
+		case SYS_FORK:
+			fork(args[0]);
+			break;
+		case SYS_EXEC:
+			exec(args[0]);
+			break;
+		case SYS_WAIT:
+			wait(args[0]);
+			break;
+		case SYS_CREATE:
+			create(args[0], args[1]);
+			break;
+		case SYS_REMOVE:
+			remove(args[0]);
+			break;
+		case SYS_OPEN:
+			open(args[0]);
+			break;
+		case SYS_FILESIZE:
+			filesize(args[0]);
+			break;
+		case SYS_READ:
+			read(args[0], args[1], args[2]);
+			break;
+		case SYS_WRITE:
+			write(args[0], args[1], args[2]);
+			break;
+		case SYS_SEEK:
+			seek(args[0], args[1]);
+			break;
+		case SYS_TELL:
+			tell(args[0]);
+			break;
+		case SYS_CLOSE:
+			close(args[0]);
+			break;
+		default:
+
+	}
+	*/
 	printf ("system call!\n");
 	thread_exit ();
 }
+
+/* Project 2 system calls */
+/*
+void halt (void) {
+	/* Terminates PintOS 
+	power_off();
+}
+void exit (int status) {
+	/* Terminates the current user program 
+	thread_exit();
+}
+pid_t fork (const char *thread_name) {
+	
+}
+int exec (const char *cmd_line) {
+	struct thread
+}
+int wait (pid_t) {
+
+}
+bool create (const char *file, unsigned initial_size) {
+
+}
+bool remove (const char *file) {
+
+}
+int open (const char *file) {
+
+}
+int filesize (int fd) {
+
+}
+int read (int fd, void *buffer, unsigned length) {
+
+}
+int write (int fd, const void *buffer, unsigned length) {
+
+}
+void seek (int fd, unsigned position) {
+
+}
+unsigned tell (int fd) {
+
+}
+void close (int fd) {
+
+}
+*/

@@ -125,8 +125,8 @@ sema_up (struct semaphore *sema) {
 
 	/* If the unblocked thread has a higher priority than current
 	   thread, yield. */
-	if (t->priority > thread_current()->priority)
-		thread_yield();
+	if (!intr_context() && t->priority > thread_current()->priority)
+	 	thread_yield();
 
 	intr_set_level (old_level);
 }
