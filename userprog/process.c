@@ -74,9 +74,11 @@ initd (void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
-process_fork (const char *name, struct intr_frame *if_) {
+process_fork (const char *name, struct intr_frame *if_ UNUSED) { //SEX
 	/* Clone current thread to new thread.*/
-	struct thread *parent = thread_current();
+	return thread_create (name, 
+					PRI_DEFAULT, __do_fork, thread_current ());
+/*	struct thread *parent = thread_current();
 	memcpy(&parent->parent_if, if_, sizeof(struct intr_frame));
 	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent);
 	if(pid == TID_ERROR){
@@ -87,7 +89,7 @@ process_fork (const char *name, struct intr_frame *if_) {
 	if(child->exit_status == -1){
 		return TID_ERROR;
 	}
-	return pid;
+	return pid;*/ //SEX
 }
 
 #ifndef VM
@@ -102,33 +104,33 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
-	if(is_kernel_vaddr(va)){
+	/*if(is_kernel_vaddr(va)){
 		return false;
-	}
+	} */ //SEX
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page(parent->pml4, va);
-	if(parent_page == NULL){
+	/*if(parent_page == NULL){
 		return false;
-	}
+	} */ //SEX
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
-	new_page = palloc_get_page(PAL_USER | PAL_ZERO);
+	/*new_page = palloc_get_page(PAL_USER | PAL_ZERO);
 	if(new_page == NULL){
 		return false;
-	}
+	}*/ //SEX
 
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
-	memcpy(new_page, parent_page, PGSIZE);
-	writable = is_writable(pte);
+	/*memcpy(new_page, parent_page, PGSIZE);
+	writable = is_writable(pte); */ //SEX
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if(!pml4_set_page (curr->pml4, va, new_page, writable)){
 		/* 6. TODO: if fail to insert page, do error handling. */
-		return false;
+		// return false; //SEX
 	}
 	return true;
 }
@@ -146,7 +148,7 @@ __do_fork (void *aux) {
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
 	bool succ = true;
-	parent_if = &parent->parent_if;
+	// parent_if = &parent->parent_if; //SEX
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy(&if_, parent_if, sizeof(struct intr_frame));
@@ -171,7 +173,7 @@ __do_fork (void *aux) {
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
-	if(parent->fdt_idx == FD_LIMIT){
+	/*if(parent->fdt_idx == FD_LIMIT){
 		goto error;
 	}
 	curr->fdt[0] = parent->fdt[0];
@@ -185,7 +187,7 @@ __do_fork (void *aux) {
 	}
 	curr->fdt_idx = parent->fdt_idx;
 	sema_up(&curr->fork_sema);
-	if_.R.rax = 0;
+	if_.R.rax = 0;*/ //SEX
 
 	process_init ();
 
@@ -193,9 +195,10 @@ __do_fork (void *aux) {
 	if (succ)
 		do_iret (&if_);
 error:
-	curr->exit_status = TID_ERROR;
+	thread_exit();
+	/*curr->exit_status = TID_ERROR;
 	sema_up(&curr->fork_sema);
-	exit(TID_ERROR);
+	exit(TID_ERROR);*/
 }
 
 /* Switch the current execution context to the f_name.
@@ -240,16 +243,19 @@ process_exec (void *f_name) {
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
 int
-process_wait (tid_t child_tid) {
+process_wait (tid_t child_tid UNUSED) { //SEX
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	struct thread *curr = thread_current();
 	struct thread *child = thread_child(child_tid);
 	int exit_status;
+	printf("SUCCESS\n");
 	if(child == NULL){
+		printf("FAIL\n");
 		return -1;
 	}
+	printf("SUCCESS2\n");
 	sema_down(&child->wait_sema);
 	exit_status = child->exit_status;
 	list_remove(&child->childs_elem);
@@ -265,7 +271,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	printf("%s: exit(%d)\n", curr->name, curr->exit_status);
+	// printf("%s: exit(%d)\n", curr->name, curr->exit_status); //SEX
 	process_cleanup ();
 }
 

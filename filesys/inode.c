@@ -87,7 +87,7 @@ inode_create (disk_sector_t sector, off_t length) {
 				size_t i;
 
 				for (i = 0; i < sectors; i++) 
-					disk_write (filesys_disk, disk_inode->start + i, zeros); 
+					disk_write (filesys_disk, disk_inode->start + i, zeros);
 			}
 			success = true; 
 		} 

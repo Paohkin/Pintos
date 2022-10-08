@@ -36,11 +36,11 @@ is_valid_vaddr(void *addr){
 	else{
 		exit(-1);
 	}
-}
+} //SEX
 
 void
 syscall_init (void) {
-	lock_init(&file_lock);
+	// lock_init(&file_lock); //SEX
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
@@ -54,11 +54,11 @@ syscall_init (void) {
 
 /* The main system call interface */
 void
-syscall_handler (struct intr_frame *f UNUSED) {
+syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
 	uint64_t syscall_num = f->R.rax;
 	uint64_t args[] = {f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9};
-
+	printf("%d\n", syscall_num);
 	switch (syscall_num)
 	{
 		case SYS_HALT:
@@ -106,7 +106,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		default:
 			exit(-1);
 	}
-	exit(-1);
 }
 
 /* Project 2 system calls */
@@ -222,7 +221,9 @@ int
 write (int fd, const void *buffer, unsigned length) {
 	is_valid_vaddr(buffer);
 	int size;
+	printf("sex1\n");
 	if((fd < 0) || (fd >= FD_LIMIT) || (fd == STDIN_FILENO)){
+		printf("sex2\n");
 		return -1;
 	}
 	else if(fd == STDOUT_FILENO){ // see lib/kernel/console.c, lock is already taken
@@ -280,3 +281,4 @@ close (int fd) {
 	}
 	file_close(fd);
 }
+ //SEX

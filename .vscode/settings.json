@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "serial.h": "c",
+        "interrupt.h": "c",
+        "*.inc": "c"
+    }
+}

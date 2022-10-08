@@ -216,7 +216,7 @@ thread_create (const char *name, int priority,
 		init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
-	list_push_back(&thread_current()->childs, &t->childs_elem);
+	list_push_back(&thread_current()->childs, &t->childs_elem); //SEX
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -331,7 +331,7 @@ thread_exit (void) {
 		sema_up(&child->kill_sema);
 	}
 	sema_up(&curr->wait_sema);
-	sema_down(&child->kill_sema);
+	sema_down(&child->kill_sema); //SEX
 
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
@@ -535,6 +535,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
 	/* -------------------- Project 1 -------------------- */
 	t->origin_priority = priority;      /* Original priority */
 	list_init(&t->donors);				/* List of priority donors */
@@ -547,13 +548,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->exit_status = 0;
 	t->fdt_idx = 2;
 	int i;
-	/*for(i = 0; i < FD_LIMIT; i++){
+	for(i = 0; i < FD_LIMIT; i++){
 		t->fdt[i] = NULL;
-	}*/
+	}
 	list_init(&t->childs);
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->wait_sema, 0);
-	sema_init(&t->kill_sema, 0);
+	sema_init(&t->kill_sema, 0);  //SEX
 	/* -------------------- Project 2 -------------------- */
 }
 
@@ -817,14 +818,21 @@ thread_child(int pid){
 	struct list *childs = &curr->childs;
 	struct list_elem *e;
 	struct thread *t;
+	printf("11111111\n");
 	if(!list_empty(childs)){
+		printf("2222222222\n");
 		for(e = list_begin(childs); e != list_end(childs); e = list_next(e)){
 			t = list_entry(e, struct thread, childs_elem);
+			printf("%d\n", pid);
+			printf("%d\n", t->tid);
+			printf("tid : %d, pid : $d\n", t->tid, pid);
 			if(t->tid == pid){
+				printf("4444444444\n");
 				return t;
 			}
 		}
+		printf("555555555\n");
 	}
 	return NULL;
-}
+} //SEX
 /* -------------------- Project 2 -------------------- */
