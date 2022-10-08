@@ -8,6 +8,7 @@
 #ifdef VM
 #include "vm/vm.h"
 #endif
+#include "threads/synch.h"
 
 
 /* States in a thread's life cycle. */
@@ -34,6 +35,9 @@ typedef int tid_t;
 #define NICE_MAX 20						/* Highest nice value. */
 #define RECENT_CPU_DEFAULT 0   			/* Default recent cpu value. */
 #define LOAD_AVG_DEFAULT 0 				/* Default load avg value. */
+
+/* Project 2. */
+#define FD_LIMIT 1024					/* File descriptor limit. */
 
 /* A kernel thread or user process.
  *
@@ -116,6 +120,17 @@ struct thread {
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
+	/* -------------------- Project 2 -------------------- */
+	int exit_status;
+	int fdt_idx;						/* file descriptor set */
+	struct file *fdt[FD_LIMIT];			/* file descriptor set */
+	struct list childs;
+	struct list_elem childs_elem;
+	struct intr_frame parent_if;
+	struct semaphore fork_sema;
+	struct semaphore wait_sema;
+	struct semaphore kill_sema;
+	/* -------------------- Project 2 -------------------- */
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
@@ -167,6 +182,8 @@ void mlfqs_prio_calc_all(void);
 void mlfqs_rec_cpu_calc(void);
 void mlfqs_rec_cpu_inc_per_sec(void);
 void mlfqs_load_avg_calc(void);
+
+struct thread *thread_child(int);
 
 void do_iret (struct intr_frame *tf);
 

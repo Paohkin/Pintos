@@ -216,6 +216,8 @@ thread_create (const char *name, int priority,
 		init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
+	list_push_back(&thread_current()->childs, &t->childs_elem);
+
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	t->tf.rip = (uintptr_t) kernel_thread;
@@ -321,6 +323,15 @@ thread_exit (void) {
 #ifdef USERPROG
 	process_exit ();
 #endif
+	struct thread *curr = thread_current();
+	struct list *childs = &curr->childs;
+	struct thread *child;
+	while(!list_empty(childs)){
+		child = list_entry(list_pop_front(childs), struct thread, childs_elem);
+		sema_up(&child->kill_sema);
+	}
+	sema_up(&curr->wait_sema);
+	sema_down(&child->kill_sema);
 
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
@@ -524,7 +535,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
-
 	/* -------------------- Project 1 -------------------- */
 	t->origin_priority = priority;      /* Original priority */
 	list_init(&t->donors);				/* List of priority donors */
@@ -532,6 +542,21 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->nice = NICE_DEFAULT;				/* Set nice value as default 0. */
 	t->recent_cpu = RECENT_CPU_DEFAULT; /* Set recent cpu value as default 0. */
 	/* -------------------- Project 1 -------------------- */
+	printf("1\n");
+	/* -------------------- Project 2 -------------------- */
+	t->exit_status = 0;
+	t->fdt_idx = 2;
+	int i;
+	/*for(i = 0; i < FD_LIMIT; i++){
+		t->fdt[i] = NULL;
+	}*/
+	printf("2\n");
+	list_init(&t->childs);
+	sema_init(&t->fork_sema, 0);
+	sema_init(&t->wait_sema, 0);
+	sema_init(&t->kill_sema, 0);
+	/* -------------------- Project 2 -------------------- */
+	printf("3\n");
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -786,3 +811,22 @@ mlfqs_load_avg_calc(void){
 	load_avg = ADD_FP(MUL_FP(DIV_FP(CONV_TO_FP(59), CONV_TO_FP(60)), load_avg), MUL_INT(DIV_FP(CONV_TO_FP(1), CONV_TO_FP(60)), ready_threads));
 }
 /* -------------------- Project 1 -------------------- */
+
+/* -------------------- Project 2 -------------------- */
+struct thread *
+thread_child(int pid){
+	struct thread *curr = thread_current();
+	struct list *childs = &curr->childs;
+	struct list_elem *e;
+	struct thread *t;
+	if(!list_empty(childs)){
+		for(e = list_begin(childs); e != list_end(childs); e = list_next(e)){
+			t = list_entry(e, struct thread, childs_elem);
+			if(t->tid == pid){
+				return t;
+			}
+		}
+	}
+	return NULL;
+}
+/* -------------------- Project 2 -------------------- */
