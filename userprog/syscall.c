@@ -58,9 +58,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	uint64_t syscall_num = f->R.rax;
 	uint64_t args[] = {f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9};
-	while(1){
-		printf("asdf");
-	}
+
 	switch (syscall_num)
 	{
 		case SYS_HALT:

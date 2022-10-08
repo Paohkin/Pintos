@@ -542,7 +542,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->nice = NICE_DEFAULT;				/* Set nice value as default 0. */
 	t->recent_cpu = RECENT_CPU_DEFAULT; /* Set recent cpu value as default 0. */
 	/* -------------------- Project 1 -------------------- */
-	printf("1\n");
+
 	/* -------------------- Project 2 -------------------- */
 	t->exit_status = 0;
 	t->fdt_idx = 2;
@@ -550,13 +550,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	/*for(i = 0; i < FD_LIMIT; i++){
 		t->fdt[i] = NULL;
 	}*/
-	printf("2\n");
 	list_init(&t->childs);
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->wait_sema, 0);
 	sema_init(&t->kill_sema, 0);
 	/* -------------------- Project 2 -------------------- */
-	printf("3\n");
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

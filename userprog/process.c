@@ -83,7 +83,7 @@ process_fork (const char *name, struct intr_frame *if_) {
 		return TID_ERROR;
 	}
 	struct thread *child = thread_child(pid);
-	//sema_down(&child->fork_sema); // wait until fork finishes
+	sema_down(&child->fork_sema); // wait until fork finishes
 	if(child->exit_status == -1){
 		return TID_ERROR;
 	}
@@ -244,10 +244,9 @@ process_wait (tid_t child_tid) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	 
 	struct thread *curr = thread_current();
 	struct thread *child = thread_child(child_tid);
-	/*int exit_status;
+	int exit_status;
 	if(child == NULL){
 		return -1;
 	}
@@ -255,9 +254,7 @@ process_wait (tid_t child_tid) {
 	exit_status = child->exit_status;
 	list_remove(&child->childs_elem);
 	sema_up(&child->kill_sema);
-
-	return exit_status;*/
-	return child->exit_status;
+	return exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */

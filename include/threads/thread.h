@@ -37,7 +37,7 @@ typedef int tid_t;
 #define LOAD_AVG_DEFAULT 0 				/* Default load avg value. */
 
 /* Project 2. */
-#define FD_LIMIT 1024					/* File descriptor limit. */
+#define FD_LIMIT 128					/* File descriptor limit. */
 
 /* A kernel thread or user process.
  *
