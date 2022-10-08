@@ -50,8 +50,11 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	char *token, *save_ptr;
+	token = strtok_r(file_name, " ", &save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (token, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -183,7 +186,7 @@ process_exec (void *f_name) {
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); //debug
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); //debug
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -200,12 +203,21 @@ process_exec (void *f_name) {
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) {
+process_wait (tid_t child_tid) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (true) {}
-	return -1;
+	struct thread *curr = thread_current();
+	struct thread *child = thread_child(child_tid);
+	int exit_status;
+	if(child == NULL){
+		return -1;
+	}
+	sema_down(&child->wait_sema);
+	exit_status = child->exit_status;
+	list_remove(&child->childs_elem);
+	sema_up(&child->kill_sema);
+	return exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */

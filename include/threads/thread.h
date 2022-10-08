@@ -8,6 +8,7 @@
 #ifdef VM
 #include "vm/vm.h"
 #endif
+#include "threads/synch.h"
 
 
 /* States in a thread's life cycle. */
@@ -112,6 +113,14 @@ struct thread {
 	int recent_cpu;						/* Recent cpu value. */
 	/* -------------------- Project 1 -------------------- */
 
+	/* -------------------- Project 2 -------------------- */
+	int exit_status;
+	struct list childs;
+	struct list_elem childs_elem;
+	struct semaphore wait_sema;
+	struct semaphore kill_sema;
+	/* -------------------- Project 2 -------------------- */
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -167,6 +176,8 @@ void mlfqs_prio_calc_all(void);
 void mlfqs_rec_cpu_calc(void);
 void mlfqs_rec_cpu_inc_per_sec(void);
 void mlfqs_load_avg_calc(void);
+
+struct thread *thread_child(int);
 
 void do_iret (struct intr_frame *tf);
 
