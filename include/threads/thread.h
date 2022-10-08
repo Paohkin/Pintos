@@ -36,6 +36,9 @@ typedef int tid_t;
 #define RECENT_CPU_DEFAULT 0   			/* Default recent cpu value. */
 #define LOAD_AVG_DEFAULT 0 				/* Default load avg value. */
 
+/* Project 2. */
+#define FD_LIMIT 128					/* File descriptor limit. */
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -115,6 +118,8 @@ struct thread {
 
 	/* -------------------- Project 2 -------------------- */
 	int exit_status;
+	int fdt_idx;						/* file descriptor set */
+	struct file **fdt;					/* file descriptor set */
 	struct list childs;
 	struct list_elem childs_elem;
 	struct semaphore wait_sema;

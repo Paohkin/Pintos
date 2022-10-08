@@ -83,7 +83,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = remove(args[0]);
 			break;
 		case SYS_OPEN:
-			//open(args[0]);
+			f->R.rax = open(args[0]);
 			break;
 		case SYS_FILESIZE:
 			//filesize(args[0]);
@@ -140,11 +140,26 @@ remove (const char *file) {
 	is_valid_vaddr(file);
 	return filesys_remove(file);
 }
-/*
-int open (const char *file) {
 
+int
+open (const char *file) {
+	is_valid_vaddr(file);
+	struct file *f = filesys_open(file);
+	if(f == NULL){
+		return -1;
+	}
+	struct thread *curr = thread_current();
+	int fd = curr->fdt_idx;
+	struct file **fdt = curr->fdt;
+	while((fd < FD_LIMIT) && (fdt[fd] != NULL)){
+		fd++;
+	} 
+	if(fd == FD_LIMIT){
+		return -1;
+	} 
+	return fd;
 }
-int filesize (int fd) {
+/*int filesize (int fd) {
 
 }
 int read (int fd, void *buffer, unsigned length) {
