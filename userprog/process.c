@@ -250,12 +250,9 @@ process_wait (tid_t child_tid UNUSED) { //SEX
 	struct thread *curr = thread_current();
 	struct thread *child = thread_child(child_tid);
 	int exit_status;
-	printf("SUCCESS\n");
 	if(child == NULL){
-		printf("FAIL\n");
 		return -1;
 	}
-	printf("SUCCESS2\n");
 	sema_down(&child->wait_sema);
 	exit_status = child->exit_status;
 	list_remove(&child->childs_elem);
@@ -271,7 +268,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	// printf("%s: exit(%d)\n", curr->name, curr->exit_status); //SEX
+	// printf("%s: exit(%d)\n", curr->name, curr->exit_status);
 	process_cleanup ();
 }
 

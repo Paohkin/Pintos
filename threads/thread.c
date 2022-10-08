@@ -326,13 +326,12 @@ thread_exit (void) {
 	struct thread *curr = thread_current();
 	struct list *childs = &curr->childs;
 	struct thread *child;
-	while(!list_empty(childs)){
+	/*while(!list_empty(childs)){
 		child = list_entry(list_pop_front(childs), struct thread, childs_elem);
 		sema_up(&child->kill_sema);
-	}
+	}*/
 	sema_up(&curr->wait_sema);
-	sema_down(&child->kill_sema); //SEX
-
+	sema_down(&curr->kill_sema);
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
@@ -818,21 +817,14 @@ thread_child(int pid){
 	struct list *childs = &curr->childs;
 	struct list_elem *e;
 	struct thread *t;
-	printf("11111111\n");
 	if(!list_empty(childs)){
-		printf("2222222222\n");
 		for(e = list_begin(childs); e != list_end(childs); e = list_next(e)){
 			t = list_entry(e, struct thread, childs_elem);
-			printf("%d\n", pid);
-			printf("%d\n", t->tid);
-			printf("tid : %d, pid : $d\n", t->tid, pid);
 			if(t->tid == pid){
-				printf("4444444444\n");
 				return t;
 			}
 		}
-		printf("555555555\n");
 	}
 	return NULL;
-} //SEX
+}
 /* -------------------- Project 2 -------------------- */
