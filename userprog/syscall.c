@@ -36,11 +36,11 @@ is_valid_vaddr(void *addr){
 	else{
 		exit(-1);
 	}
-} //SEX
+}
 
 void
 syscall_init (void) {
-	// lock_init(&file_lock); //SEX
+	lock_init(&file_lock);
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
@@ -56,8 +56,11 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
+	
 	uint64_t syscall_num = f->R.rax;
 	uint64_t args[] = {f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9};
+	
+	//printf("syscall number: %d", syscall_num);
 	switch (syscall_num)
 	{
 		case SYS_HALT:
@@ -67,37 +70,37 @@ syscall_handler (struct intr_frame *f) {
 			exit(args[0]);
 			break;
 		case SYS_FORK:
-			fork(args[0]);
+			f->R.rax = fork(args[0], f);
 			break;
 		case SYS_EXEC:
-			exec(args[0]);
+			//f->R.rax = exec(args[0]);
 			break;
 		case SYS_WAIT:
 			f->R.rax = wait(args[0]);
 			break;
 		case SYS_CREATE:
-			create(args[0], args[1]);
+			f->R.rax = create(args[0], args[1]);
 			break;
 		case SYS_REMOVE:
-			remove(args[0]);
+			f->R.rax = remove(args[0]);
 			break;
 		case SYS_OPEN:
-			open(args[0]);
+			f->R.rax = open(args[0]);
 			break;
 		case SYS_FILESIZE:
-			filesize(args[0]);
+			f->R.rax = filesize(args[0]);
 			break;
 		case SYS_READ:
-			read(args[0], args[1], args[2]);
+			f->R.rax = read(args[0], args[1], args[2]);
 			break;
 		case SYS_WRITE:
-			write(args[0], args[1], args[2]);
+			f->R.rax = write(args[0], args[1], args[2]);
 			break;
 		case SYS_SEEK:
 			seek(args[0], args[1]);
 			break;
 		case SYS_TELL:
-			tell(args[0]);
+			f->R.rax = tell(args[0]);
 			break;
 		case SYS_CLOSE:
 			close(args[0]);
@@ -108,6 +111,7 @@ syscall_handler (struct intr_frame *f) {
 }
 
 /* Project 2 system calls */
+
 void
 halt (void) {
 	power_off();
@@ -117,23 +121,18 @@ void
 exit (int status) {
 	struct thread *curr = thread_current();
 	curr->exit_status = status;
+	printf("%s: exit(%d)\n", curr->name, status);
 	thread_exit();
 }
 
-pid_t
-fork (const char *thread_name) {
-	struct intr_frame *tf = &thread_current()->tf;
-	return process_fork(thread_name, tf);
+tid_t fork (const char *thread_name, struct intr_frame *f) {
+	return process_fork(thread_name, f);
 }
 
-int
-exec (const char *cmd_line) {
-	is_valid_vaddr(cmd_line);
-	if(process_exec(cmd_line) == -1){
-		return -1;
-	}
-	NOT_REACHED();
-}
+/*
+int exec (const char *cmd_line) {
+	struct thread
+}*/
 
 int
 wait (pid_t pid) {
@@ -160,11 +159,14 @@ open (const char *file) {
 		return -1;
 	}
 	struct thread *curr = thread_current();
-	int fd = curr->fdt_idx;
 	struct file **fdt = curr->fdt;
-	while((fd < FD_LIMIT) && (fdt[fd] != NULL)){
-		fd++;
-	} 
+	int fd;
+	for(fd = 2; fd < FD_LIMIT; fd++){
+		if(fdt[fd] == NULL){
+			fdt[fd] = f;
+			break;
+		}
+	}
 	if(fd == FD_LIMIT){
 		return -1;
 	} 
@@ -209,18 +211,18 @@ read (int fd, void *buffer, unsigned length) {
 		if(fdt[fd] == NULL){
 			return -1;
 		}
-		lock_acquire(file_lock);
+		lock_acquire(&file_lock);
 		size = file_read(fdt[fd], buffer, length);
-		lock_release(file_lock);
+		lock_release(&file_lock);
 	}
 	return size;
 }
 
-int
+int 
 write (int fd, const void *buffer, unsigned length) {
 	is_valid_vaddr(buffer);
 	int size;
-	if((fd < 0) || (fd >= FD_LIMIT) || (fd == STDIN_FILENO)){
+	if((fd < 0) || (fd >= 128) || (fd == STDIN_FILENO)){
 		return -1;
 	}
 	else if(fd == STDOUT_FILENO){ // see lib/kernel/console.c, lock is already taken
@@ -233,9 +235,7 @@ write (int fd, const void *buffer, unsigned length) {
 		if(fdt[fd] == NULL){
 			return -1;
 		}
-		lock_acquire(file_lock);
 		size = file_write(fdt[fd], buffer, length);
-		lock_release(file_lock);
 	}
 	return size;
 }
@@ -263,7 +263,7 @@ tell (int fd) {
 	if(fdt[fd] == NULL){
 		return -1;
 	}
-	file_tell(fd);
+	file_tell(fdt[fd]);
 }
 
 void
@@ -276,6 +276,8 @@ close (int fd) {
 	if(fdt[fd] == NULL){
 		return;
 	}
-	file_close(fd);
+	else{
+		file_close(fdt[fd]);
+		fdt[fd] = NULL;
+	}
 }
- //SEX

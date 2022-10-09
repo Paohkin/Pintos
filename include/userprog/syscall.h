@@ -7,11 +7,10 @@ typedef int pid_t;
 
 void syscall_init (void);
 void is_valid_vaddr (void *);
-struct lock *file_lock;
+struct lock file_lock;
 
 void halt(void);
 void exit(int);
-pid_t fork(const char *);
 int exec(const char *);
 int wait(pid_t);
 bool create(const char *, unsigned);

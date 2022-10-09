@@ -37,7 +37,7 @@ typedef int tid_t;
 #define LOAD_AVG_DEFAULT 0 				/* Default load avg value. */
 
 /* Project 2. */
-#define FD_LIMIT 128					/* File descriptor limit. */
+#define FD_LIMIT 64						/* File descriptor limit. */
 
 /* A kernel thread or user process.
  *
@@ -116,21 +116,21 @@ struct thread {
 	int recent_cpu;						/* Recent cpu value. */
 	/* -------------------- Project 1 -------------------- */
 
+	/* -------------------- Project 2 -------------------- */
+	int exit_status;
+	struct file **fdt;					/* file descriptor set */
+	struct list childs;
+	struct list_elem childs_elem;
+	struct semaphore wait_sema;
+	struct semaphore kill_sema;
+	struct intr_frame parent_if;
+	struct semaphore fork_sema;
+	/* -------------------- Project 2 -------------------- */
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
-	/* -------------------- Project 2 -------------------- */
-	int exit_status;
-	int fdt_idx;						/* file descriptor set */
-	struct file *fdt[FD_LIMIT];			/* file descriptor set */
-	struct list childs;
-	struct list_elem childs_elem;
-	struct intr_frame parent_if;
-	struct semaphore fork_sema;
-	struct semaphore wait_sema;
-	struct semaphore kill_sema;
-	/* -------------------- Project 2 -------------------- */
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;

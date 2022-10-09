@@ -213,10 +213,17 @@ thread_create (const char *name, int priority,
 	if (thread_mlfqs)
 		init_thread(t, name, PRI_DEFAULT);
 	else
-		init_thread (t, name, priority);
+		init_thread(t, name, priority);
 	tid = t->tid = allocate_tid ();
 
-	list_push_back(&thread_current()->childs, &t->childs_elem); //SEX
+	/* -------------------- Project 2 -------------------- */
+	t->fdt = palloc_get_multiple(PAL_ZERO, FD_LIMIT);
+	if(t->fdt == NULL){
+		return TID_ERROR;
+	}
+	// regarding childs
+	list_push_back(&thread_current()->childs, &t->childs_elem);
+	/* -------------------- Project 2 -------------------- */
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -323,15 +330,7 @@ thread_exit (void) {
 #ifdef USERPROG
 	process_exit ();
 #endif
-	struct thread *curr = thread_current();
-	struct list *childs = &curr->childs;
-	struct thread *child;
-	/*while(!list_empty(childs)){
-		child = list_entry(list_pop_front(childs), struct thread, childs_elem);
-		sema_up(&child->kill_sema);
-	}*/
-	sema_up(&curr->wait_sema);
-	sema_down(&curr->kill_sema);
+
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
@@ -545,15 +544,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 
 	/* -------------------- Project 2 -------------------- */
 	t->exit_status = 0;
-	t->fdt_idx = 2;
-	int i;
-	for(i = 0; i < FD_LIMIT; i++){
-		t->fdt[i] = NULL;
-	}
 	list_init(&t->childs);
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->wait_sema, 0);
-	sema_init(&t->kill_sema, 0);  //SEX
+	sema_init(&t->kill_sema, 0);
 	/* -------------------- Project 2 -------------------- */
 }
 
