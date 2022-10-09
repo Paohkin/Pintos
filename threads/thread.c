@@ -217,11 +217,11 @@ thread_create (const char *name, int priority,
 	tid = t->tid = allocate_tid ();
 
 	/* -------------------- Project 2 -------------------- */
-	t->fdt_idx = 2;
 	t->fdt = palloc_get_multiple(PAL_ZERO, FD_LIMIT);
 	if(t->fdt == NULL){
 		return TID_ERROR;
 	}
+	t->fdt_idx = 2;
 	// regarding childs
 	list_push_back(&thread_current()->childs, &t->childs_elem);
 	/* -------------------- Project 2 -------------------- */
@@ -556,6 +556,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	/* -------------------- Project 2 -------------------- */
 	t->exit_status = 0;
 	list_init(&t->childs);
+	sema_init(&t->fork_sema, 0);
 	sema_init(&t->wait_sema, 0);
 	sema_init(&t->kill_sema, 0);
 	/* -------------------- Project 2 -------------------- */

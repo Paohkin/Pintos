@@ -37,7 +37,7 @@ typedef int tid_t;
 #define LOAD_AVG_DEFAULT 0 				/* Default load avg value. */
 
 /* Project 2. */
-#define FD_LIMIT 128					/* File descriptor limit. */
+#define FD_LIMIT 64					/* File descriptor limit. */
 
 /* A kernel thread or user process.
  *
@@ -124,6 +124,9 @@ struct thread {
 	struct list_elem childs_elem;
 	struct semaphore wait_sema;
 	struct semaphore kill_sema;
+	struct intr_frame parent_if;
+	struct semaphore fork_sema;
+	struct file *run;
 	/* -------------------- Project 2 -------------------- */
 
 #ifdef USERPROG
