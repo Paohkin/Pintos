@@ -192,10 +192,6 @@ open (const char *file) {
 		}
 	}
 
-/*	while((fid < FD_LIMIT) && (ft[fid] != NULL)){
-		curr->fdt_idx++;
-	}*/
-
 	if(fid == FD_LIMIT){
 		return -1;
 	}
