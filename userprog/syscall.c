@@ -110,9 +110,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = read(args[0], args[1], args[2]);
 			break;
 		case SYS_WRITE: //10
-			//printf("0 : %llu, 1 : %llu, 2 : %llu\n", args[0], args[1], args[2]);
 			f->R.rax = write(args[0], args[1], args[2]);
-			//printf("rax : %llu\n", f->R.rax);
 			break;
 		case SYS_SEEK: //11
 			seek(args[0], args[1]);

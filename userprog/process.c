@@ -186,8 +186,6 @@ __do_fork (void *aux) {
 	}
 	sema_up(&current->fork_sema);
 
-	// ? process_init ();
-
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
@@ -203,8 +201,6 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-	//printf("11 %s\n", f_name);
-	//printf("22 %s\n", file_name);
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
