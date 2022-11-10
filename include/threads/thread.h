@@ -129,6 +129,10 @@ struct thread {
 	struct file *run;
 	/* -------------------- Project 2 -------------------- */
 
+	/* -------------------- Project 3 -------------------- */
+
+	/* -------------------- Project 3 -------------------- */
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
