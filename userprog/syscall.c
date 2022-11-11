@@ -49,8 +49,12 @@ void close(int);
 void
 is_valid_vaddr(void *addr){
 	struct thread *curr = thread_current();
-	if (addr == NULL || !(is_user_vaddr(addr)) || pml4_get_page(curr->pml4, addr) == NULL)
+	//if (addr == NULL || !(is_user_vaddr(addr)) || pml4_get_page(curr->pml4, addr) == NULL)
+	//	exit(-1);
+	if(is_kernel_vaddr(addr)){
 		exit(-1);
+	}
+	return spt_find_page(&curr->spt, addr);
 }
 
 void
