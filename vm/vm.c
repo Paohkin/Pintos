@@ -70,7 +70,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		if(VM_TYPE(type) == VM_FILE){
 			uninit_new(page, upage, init, type, aux, file_backed_initializer);
 		}
-		page->writable = writable;
+		page->writable = true;
 		/* TODO: Insert the page into the spt. */
 		return spt_insert_page(spt, page);
 	}
@@ -80,7 +80,7 @@ err:
 
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
-spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
+spt_find_page (struct supplemental_page_table *spt, void *va) {
 	// struct page *page = NULL;
 	/* TODO: Fill this function. */
 	struct page *page;
@@ -225,7 +225,7 @@ vm_do_claim_page (struct page *page) {
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	struct thread *curr = thread_current();
 
-	if (!pml4_set_page (curr->pml4, page->va, frame->kva, page->rw))
+	if (!pml4_set_page (curr->pml4, page->va, frame->kva, page->writable))
 		return false;
 
 	return swap_in (page, frame->kva);
@@ -234,7 +234,7 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	struct hash *spt_hash = malloc(sizeof(struct hash));
+	struct hash *spt_hash = (struct hash *)malloc(sizeof(struct hash));
 	hash_init(spt_hash, hash_func, less_func, NULL);
 	spt->spt_hash = spt_hash;
 }

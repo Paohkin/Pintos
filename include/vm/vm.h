@@ -49,7 +49,8 @@ struct page {
 	/* Your implementation */
 	/* Project 3*/
 	struct hash_elem elem;
-	bool rw; 
+	struct file_information *file_inf;
+	bool writable;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -116,5 +117,11 @@ bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 
 /* Project 3 */
+
+struct file_information{
+	struct file *file;
+	off_t ofs;
+	uint32_t read_bytes;
+};
 
 #endif  /* VM_VM_H */
