@@ -2,6 +2,8 @@
     "files.associations": {
         "timer.h": "c",
         "syscall.h": "c",
-        "mmu.h": "c"
+        "mmu.h": "c",
+        "*.inc": "c",
+        "string_view": "c"
     }
 }

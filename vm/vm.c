@@ -6,6 +6,7 @@
 #include "lib/kernel/hash.h"
 #include "threads/vaddr.h"
 #include "threads/mmu.h"
+#include <string.h>
 
 struct list frame_list;
 
@@ -251,6 +252,34 @@ supplemental_page_table_init (struct supplemental_page_table *spt) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	struct hash_iterator itr;
+	hash_first(&itr, &src->spt_hash);
+	while (hash_next(&itr))
+	{
+		struct page *page_src = hash_entry(hash_cur(&itr), struct page, elem);
+		enum vm_type type = page_get_type(page_src);
+		void *upage = page_src->va;
+		bool writable = page_src->writable;
+		vm_initializer *init = page_src->uninit.init;
+		void *aux = page_src->uninit.aux;
+		if (page_src->operations->type == VM_UNINIT)
+		{
+			if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
+				return false;
+		}
+		else
+		{
+			vm_alloc_page(type, upage, writable);
+			vm_claim_page(upage);
+		}
+		if (page_src->operations->type != VM_UNINIT)
+		{
+			struct page *page_dst = spt_find_page(dst, upage);
+			memcpy(page_dst->frame->kva, page_src->frame->kva, PGSIZE);
+		}
+		
+	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -258,6 +287,15 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	struct hash_iterator itr;
+
+	hash_first(&itr, &spt->spt_hash);
+
+	while (hash_next(&itr))
+	{
+		struct page *page = hash_entry(hash_cur(&itr), struct page, elem);
+		destroy(page);
+	}
 }
 
 /* Project 3*/

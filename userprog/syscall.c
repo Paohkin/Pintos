@@ -54,7 +54,12 @@ is_valid_vaddr(void *addr){
 	if(is_kernel_vaddr(addr)){
 		exit(-1);
 	}
-	return spt_find_page(&curr->spt, addr);
+
+	struct page *page = spt_find_page(&curr->spt, addr);
+	if (page == NULL)
+		exit(-1);
+
+	return true;
 }
 
 void
