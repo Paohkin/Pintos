@@ -7,6 +7,8 @@
 #include "threads/vaddr.h"
 #include "threads/mmu.h"
 
+struct list frame_list;
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
@@ -19,6 +21,7 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_list);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -60,8 +63,16 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-
+		struct page *page = (struct page *)malloc(sizeof(struct page));
+		if(VM_TYPE(type) == VM_ANON){
+			uninit_new(page, upage, init, type, aux, anon_initializer);
+		}
+		if(VM_TYPE(type) == VM_FILE){
+			uninit_new(page, upage, init, type, aux, file_backed_initializer);
+		}
+		page->writable = writable;
 		/* TODO: Insert the page into the spt. */
+		return spt_insert_page(spt, page);
 	}
 err:
 	return false;
@@ -109,20 +120,33 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 /* Get the struct frame, that will be evicted. */
 static struct frame *
 vm_get_victim (void) {
-	struct frame *victim = NULL;
+	//struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
-
-	return victim;
+	struct thread *curr = thread_current();
+	struct list_elem *e;
+	struct frame *victim;
+	if(!list_empty(&frame_list)){
+		for(e = list_begin(&frame_list); e != list_end(&frame_list); e = list_next(e)){
+			victim = list_entry(e, struct thread, elem);
+			if(pml4_is_accessed(curr->pml4, victim->page->va)){
+				pml4_set_accessed(curr->pml4, victim->page->va, 0);
+			}
+			else{
+				return victim;
+			}
+		}
+	}
+	NOT_REACHED ();
 }
 
 /* Evict one page and return the corresponding frame.
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	struct frame *victim UNUSED = vm_get_victim ();
+	struct frame *victim = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
-
-	return NULL;
+	swap_out(victim->page);
+	return NULL; //error
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -133,14 +157,13 @@ static struct frame *
 vm_get_frame (void) {
 	//struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-	printf("Case 1\n");
-	struct frame *frame = malloc(sizeof(struct frame));
-	printf("Case 2\n");
+	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 	frame->kva = palloc_get_page(PAL_USER);
+	if(frame->kva == NULL){
+		frame = vm_evict_frame();
+	}
 	frame->page = NULL;
-
-	ASSERT (frame != NULL);
-	ASSERT (frame->page == NULL);
+	list_push_front(&frame_list, &frame->frame_elem);
 	return frame;
 }
 
@@ -152,6 +175,7 @@ vm_stack_growth (void *addr UNUSED) {
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp (struct page *page UNUSED) {
+	return true;
 }
 
 /* Return true on success */
@@ -229,13 +253,15 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 }
 
 /* Project 3*/
-static uint64_t hash_func (const struct hash_elem *e, void *aux) {
+uint64_t 
+hash_func (const struct hash_elem *e, void *aux){
 	struct page *p = hash_entry(e, struct page, elem);
-	return hash_bytes(&p->va, sizeof p->va);
+	return hash_bytes(&p->va, sizeof(p->va));
 }
 
-static bool less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux) {
-	struct page *p = hash_entry(a, struct page, elem);
-	struct page *q = hash_entry(b, struct page, elem);
-	return p->va < q->va;
+bool 
+less_func (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED){
+	struct page *a = hash_entry(a_, struct page, elem);
+	struct page *b = hash_entry(b_, struct page, elem);
+	return a->va < b->va;
 }
