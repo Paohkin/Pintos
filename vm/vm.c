@@ -193,7 +193,7 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 	// struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	if(is_kernel_vaddr(addr) || !not_present){
+	if(!not_present){
 		return false;
 	}
 

@@ -154,16 +154,19 @@ syscall_handler (struct intr_frame *f) {
 void halt (void) {
 	power_off();
 }
+
 void exit (int status) {
 	struct thread *curr = thread_current();
 	curr->exit_status = status;
 	printf("%s: exit(%d)\n", curr->name, status);
 	thread_exit();
 }
+
 tid_t
 fork (const char *thread_name, struct intr_frame *f) {
 	return process_fork(thread_name, f);
 }
+
 int
 exec (const char *cmd_line) {
 	struct thread *curr = thread_current();
@@ -177,14 +180,19 @@ exec (const char *cmd_line) {
 	}
 	NOT_REACHED();
 }
+
 int
 wait (pid_t pid) {
 	return process_wait(pid);
 }
+
 bool
 create (const char *file, unsigned initial_size) {
 	is_valid_vaddr(file);
-	return filesys_create(file, initial_size);
+	lock_acquire(&file_lock);
+	bool ret = filesys_create(file, initial_size);
+	lock_release(&file_lock);
+	return ret;
 }
 
 bool
@@ -196,7 +204,10 @@ remove (const char *file) {
 int
 open (const char *file) {
 	is_valid_vaddr(file); //terminate with -1 if invalid pointer
+
+	lock_acquire(&file_lock);
 	struct file *f = filesys_open(file);
+	lock_release(&file_lock);
 
 	if(f == NULL){
 		return -1;
@@ -221,6 +232,7 @@ open (const char *file) {
 
 	return fid;
 }
+
 int
 filesize (int fd) {
 	if((fd < 0) || (fd >= FD_LIMIT)){
@@ -233,6 +245,7 @@ filesize (int fd) {
 	}
 	return file_length(fdt[fd]);
 }
+
 int
 read (int fd, void *buffer, unsigned length) {
 	is_valid_vaddr(buffer);
@@ -266,6 +279,7 @@ read (int fd, void *buffer, unsigned length) {
 	}
 	return size;
 }
+
 int 
 write (int fd, const void *buffer, unsigned length) {
 	is_valid_vaddr(buffer);
@@ -289,7 +303,9 @@ write (int fd, const void *buffer, unsigned length) {
 	}
 	return size;
 }
-void seek (int fd, unsigned position) {
+
+void
+seek (int fd, unsigned position) {
 	if((fd < 2) || (fd >= FD_LIMIT)){
 		return;
 	}
@@ -300,6 +316,7 @@ void seek (int fd, unsigned position) {
 	}
 	file_seek(fdt[fd], position);
 }
+
 unsigned
 tell (int fd) {
 	if((fd < 2) || (fd >= FD_LIMIT)){
@@ -312,6 +329,7 @@ tell (int fd) {
 	}
 	file_tell(fd);
 }
+
 void
 close (int fd) {
 	if((fd < 0) || (fd >= FD_LIMIT)){
