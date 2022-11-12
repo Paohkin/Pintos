@@ -769,7 +769,7 @@ setup_stack (struct intr_frame *if_) {
 		success = vm_claim_page(stack_bottom);
 		if(success){
 			if_->rsp = USER_STACK;
-			//thread_current()->stack_bottom = stack_bottom;
+			thread_current()->stack_bottom = stack_bottom;
 		}
 	}
 	return success;

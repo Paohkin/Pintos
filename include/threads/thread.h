@@ -128,8 +128,6 @@ struct thread {
 	struct file *run;
 	/* -------------------- Project 2 -------------------- */
 
-	/* -------------------- Project 3 -------------------- */
-
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -137,6 +135,8 @@ struct thread {
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	void *stack_bottom;
+	void *rsp_stack;
 #endif
 
 	/* Owned by thread.c. */

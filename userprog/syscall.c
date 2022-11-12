@@ -49,17 +49,27 @@ void close(int);
 void
 is_valid_vaddr(void *addr){
 	struct thread *curr = thread_current();
-	//if (addr == NULL || !(is_user_vaddr(addr)) || pml4_get_page(curr->pml4, addr) == NULL)
-	//	exit(-1);
+
+	#ifdef VM
+	/* For project 3 and later. */
 	if(is_kernel_vaddr(addr)){
 		exit(-1);
 	}
-
 	struct page *page = spt_find_page(&curr->spt, addr);
-	if (page == NULL)
+	if(page == NULL){
 		exit(-1);
+	}
+	else{
+		return true;
+	}
+	#endif
 
-	return true;
+	if(addr == NULL || !(is_user_vaddr(addr)) || pml4_get_page(curr->pml4, addr) == NULL){
+		exit(-1);
+	}
+	else{
+		return true;
+	}
 }
 
 void
@@ -79,10 +89,14 @@ syscall_init (void) {
 
 /* The main system call interface */
 void
-syscall_handler (struct intr_frame *f UNUSED) {
+syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
 	uint64_t syscall_num = f->R.rax;
 	uint64_t args[] = {f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9};
+
+	#ifdef VM
+	thread_current()->rsp_stack = f->rsp;
+	#endif
 
 	//printf("syscall : %d\n", syscall_num);
 	switch (syscall_num)

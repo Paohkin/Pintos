@@ -174,7 +174,11 @@ vm_get_frame (void) {
 
 /* Growing the stack. */
 static void
-vm_stack_growth (void *addr UNUSED) {
+vm_stack_growth (void *addr) {
+	if(vm_alloc_page_with_initializer(VM_ANON, addr, true, NULL, NULL)){
+		vm_claim_page(addr);
+		thread_current()->stack_bottom -= PGSIZE;
+	}
 }
 
 /* Handle the fault on write_protected page */
@@ -185,20 +189,29 @@ vm_handle_wp (struct page *page UNUSED) {
 
 /* Return true on success */
 bool
-vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
-		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool write UNUSED, bool not_present) {
 	// struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	struct page *page = spt_find_page(spt, addr);
-
-	if(page == NULL){
+	if(is_kernel_vaddr(addr) || !not_present){
 		return false;
 	}
-	else{
-		return vm_do_claim_page (page);
+
+	if(vm_claim_page(addr)){ // lazy load
+		return true;
 	}
+	else{
+		struct thread *curr = thread_current();
+		void *rsp_stack = is_kernel_vaddr(f->rsp) ? curr->rsp_stack : f->rsp;
+		if(rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){ // stack growth
+			vm_stack_growth(curr->stack_bottom - PGSIZE);
+			return true;
+		}
+		else{ // true page fault
+			return false;
+		}
+	}
+
 }
 
 /* Free the page.
