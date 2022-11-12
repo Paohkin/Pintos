@@ -124,4 +124,10 @@ struct file_information{
 	uint32_t read_bytes;
 };
 
+struct mmap_information{
+	struct list_elem elem;
+	uint64_t begin;
+	uint64_t end;
+};
+
 #endif  /* VM_VM_H */

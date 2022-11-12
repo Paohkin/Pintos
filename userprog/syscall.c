@@ -12,6 +12,7 @@
 #include "userprog/process.h"
 #include "threads/palloc.h"
 #include "lib/string.h"
+#include "vm/file.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -45,6 +46,8 @@ int write(int, const void *, unsigned);
 void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap(void *addr);
 
 void
 is_valid_vaddr(void *addr){
@@ -98,7 +101,7 @@ syscall_handler (struct intr_frame *f) {
 	thread_current()->rsp_stack = f->rsp;
 	#endif
 
-	//printf("syscall : %d\n", syscall_num);
+	// printf("syscall : %d\n", syscall_num);
 	switch (syscall_num)
 	{
 		case SYS_HALT: //0
@@ -143,6 +146,12 @@ syscall_handler (struct intr_frame *f) {
 			break;
 		case SYS_CLOSE: //13
 			close(args[0]);
+			break;
+		case SYS_MMAP: //14
+			f->R.rax = mmap(args[0], args[1], args[2] ,args[3] ,args[4]);
+			break;
+		case SYS_MUNMAP: //15
+			munmap(args[0]);
 			break;
 		default:
 			exit(-1);
@@ -252,6 +261,7 @@ read (int fd, void *buffer, unsigned length) {
 	is_valid_vaddr(buffer + length - 1);
 	int size;
 
+	struct page *page = spt_find_page(&thread_current()->spt, buffer);
 	if((fd < 0) || (fd >= FD_LIMIT) || (fd == STDOUT_FILENO)){
 		return -1;
 	}
@@ -265,6 +275,10 @@ read (int fd, void *buffer, unsigned length) {
 				return size;
 			}
 		}
+	}
+	else if(page->writable == false)
+	{
+		exit(-1);
 	}
 	else{
 		struct thread *curr = thread_current();
@@ -342,4 +356,34 @@ close (int fd) {
 	}
 	fdt[fd] = NULL;
 	file_close(fdt[fd]);
+}
+
+void
+*mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
+	struct thread *curr = thread_current();
+	struct file **fdt = curr->fdt;
+	struct file *file = fdt[fd];
+
+	if (!is_user_vaddr(addr))
+		return NULL;
+	if ((uint64_t)addr % PGSIZE != 0)
+		return NULL;
+	if (length == 0)
+		return NULL;
+	for (uint64_t i = 0; i < length; i += PGSIZE)
+	{
+		void *upage = (void *)((uint64_t)addr + i);
+		if (spt_find_page(&curr->spt, upage) != NULL)
+			return NULL;
+	}
+	if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
+		return NULL;
+	
+	
+	return do_mmap(addr, length, writable, file, offset);
+}
+
+void
+munmap(void *addr) {
+	do_munmap(addr);
 }

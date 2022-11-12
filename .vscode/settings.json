@@ -4,6 +4,7 @@
         "syscall.h": "c",
         "mmu.h": "c",
         "*.inc": "c",
-        "string_view": "c"
+        "string_view": "c",
+        "file.h": "c"
     }
 }
