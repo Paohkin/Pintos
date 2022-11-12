@@ -118,7 +118,6 @@ struct thread {
 
 	/* -------------------- Project 2 -------------------- */
 	int exit_status;
-	int fdt_idx;						/* file descriptor set */
 	struct file **fdt;					/* file descriptor set */
 	struct list childs;
 	struct list_elem childs_elem;
@@ -128,8 +127,6 @@ struct thread {
 	struct semaphore fork_sema;
 	struct file *run;
 	/* -------------------- Project 2 -------------------- */
-
-	/* -------------------- Project 3 -------------------- */
 
 	/* -------------------- Project 3 -------------------- */
 

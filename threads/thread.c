@@ -221,7 +221,6 @@ thread_create (const char *name, int priority,
 	if(t->fdt == NULL){
 		return TID_ERROR;
 	}
-	t->fdt_idx = 2;
 	// regarding childs
 	list_push_back(&thread_current()->childs, &t->childs_elem);
 	/* -------------------- Project 2 -------------------- */

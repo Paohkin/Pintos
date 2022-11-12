@@ -189,7 +189,7 @@ open (const char *file) {
 	}
 
 	struct thread *curr = thread_current();
-	int fid = curr->fdt_idx;
+	int fid = 2;
 	struct file **ft = curr->fdt;
 
 	for(fid; fid < FD_LIMIT; fid++)
