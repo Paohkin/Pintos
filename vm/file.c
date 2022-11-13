@@ -2,6 +2,7 @@
 
 #include "vm/vm.h"
 #include "threads/vaddr.h"
+#include "threads/mmu.h"
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
@@ -9,7 +10,7 @@ static void file_backed_destroy (struct page *page);
 
 /* Project 3 */
 static struct list mmap_list;
-static bool lazy_load_segment (struct page *page, void *aux);
+static bool lazy_load_file (struct page *page, void *aux);
 
 /* DO NOT MODIFY this struct */
 static const struct page_operations file_ops = {
@@ -33,7 +34,7 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 	struct file_page *file_page = &page->file;
 	struct file *file = ((struct file_information *)page->uninit.aux)->file;
 	file_page->file = file;
-
+	
 	return true;
 }
 
@@ -41,20 +42,50 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+	file_seek(file_page->file, file_page->ofs);
+	off_t read_bytes = file_read(file_page->file, kva, file_page->size); 
+	memset(kva+read_bytes, 0, PGSIZE-read_bytes);
+
+	return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	struct thread *curr = thread_current();
+
+	if (pml4_is_dirty(curr->pml4, page->va))
+	{
+		file_seek(file_page->file, file_page->ofs);
+		file_write(file_page->file, page->va, file_page->size);
+		pml4_set_dirty(curr->pml4, page->va, false);
+	}
+
+	pml4_clear_page(curr->pml4, page->va);
+	page->frame = NULL;
+
+	return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
 static void
 file_backed_destroy (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	struct thread *curr = thread_current();
 
+	if (pml4_is_dirty(curr->pml4, page->va))
+	{
+		file_seek(file_page->file, file_page->ofs);
+		file_write(file_page->file, page->va, file_page->size);
+	}
 	file_close(file_page->file);
+	if (page->frame != NULL)
+	{
+		list_remove(&page->frame->frame_elem);
+		list_remove(&page->elem);
+		free(page->frame);
+	}
 }
 
 /* Do the mmap */
@@ -77,7 +108,7 @@ do_mmap (void *addr, size_t length, int writable,
 		inf->ofs = ofs;
 		inf->read_bytes = read_bytes;
 		void *upage = (void *)((uint64_t)addr + i);
-		vm_alloc_page_with_initializer(VM_FILE, upage, writable, lazy_load_segment, inf);
+		vm_alloc_page_with_initializer(VM_FILE, upage, writable, lazy_load_file, (void *)inf);
 	}
 
 	struct mmap_information *minf = malloc(sizeof(struct mmap_information));
@@ -93,38 +124,40 @@ void
 do_munmap (void *addr) {
 	struct list_elem *e;
 
-	for (e = list_begin(&mmap_list); e != list_end(&mmap_list); e = list_next(e))
+	e = list_begin(&mmap_list);
+
+	while (e != list_end(&mmap_list))
 	{
 		struct mmap_information *minf = list_entry(e, struct mmap_information, elem);
 		if (minf->begin == (uint64_t)addr)
 		{
 			for (uint64_t i = (uint64_t)addr; i < minf->end; i += PGSIZE)
 			{
-				struct page *page = spt_find_page(&thread_current()->spt, (void *)i);
-				spt_remove_page(&thread_current()->spt, page);
+				struct thread *curr = thread_current();
+				struct page *page = spt_find_page(&curr->spt, (void *)i);
+				spt_remove_page(&curr->spt, page);
+				pml4_clear_page(curr->pml4, (void *)i);
 			}
-			list_remove(&minf->elem);
-			free(minf);
+			e = list_remove(e);
 		}
+		else
+			e = list_next(e);
 	}
 }
 
 /* Project 3 */
 static bool
-lazy_load_segment (struct page *page, void *aux) {
-	/* TODO: Load the segment from the file */
-	/* TODO: This called when the first page fault occurs on address VA. */
-	/* TODO: VA is available when calling this function. */
-	struct file *file = ((struct file_information *)aux)->file;
-	off_t offset = ((struct file_information *)aux)->ofs;
-	size_t page_read_bytes = ((struct file_information *)aux)->read_bytes;
-	size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	file_seek(file, offset);
+lazy_load_file (struct page *page, void *aux) {
+	struct file_information *inf = (struct file_information *)aux;
 
-	if(file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes){
-		palloc_free_page(page->frame->kva);
-		return false;
-	}
-	memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
+	file_seek(inf->file, inf->ofs);
+	page->file.size = file_read(inf->file, page->va, inf->read_bytes);
+	page->file.ofs = inf->ofs;
+
+	if (page->file.size != PGSIZE)
+		memset(page->va + page->file.size, 0, PGSIZE - page->file.size);
+	pml4_set_dirty(thread_current()->pml4, page->va, false);
+	free(inf);
+
 	return true;
 }

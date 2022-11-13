@@ -101,7 +101,7 @@ syscall_handler (struct intr_frame *f) {
 	thread_current()->rsp_stack = f->rsp;
 	#endif
 
-	// printf("syscall : %d\n", syscall_num);
+	//printf("syscall : %d\n", syscall_num);
 	switch (syscall_num)
 	{
 		case SYS_HALT: //0
@@ -364,9 +364,13 @@ void
 	struct file **fdt = curr->fdt;
 	struct file *file = fdt[fd];
 
-	if (!is_user_vaddr(addr))
+	if (!(uint64_t)addr || !is_user_vaddr(addr))
+		return NULL;
+	if (!is_user_vaddr((uint64_t)addr + length - 1))
 		return NULL;
 	if ((uint64_t)addr % PGSIZE != 0)
+		return NULL;
+	if (offset % PGSIZE != 0)
 		return NULL;
 	if (length == 0)
 		return NULL;
@@ -378,8 +382,9 @@ void
 	}
 	if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
 		return NULL;
-	
-	
+	if (file == NULL)
+		return NULL;
+
 	return do_mmap(addr, length, writable, file, offset);
 }
 

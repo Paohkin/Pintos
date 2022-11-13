@@ -65,5 +65,13 @@ uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;
 	/* TODO: Fill this function.
 	 * TODO: If you don't have anything to do, just return. */
+	struct thread *curr = thread_current();
+
+	if (page->frame != NULL)
+	{
+		list_remove(&page->frame->frame_elem);
+		list_remove(&page->elem);
+		free(page->frame);
+	}
 	return;
 }

@@ -5,6 +5,10 @@
         "mmu.h": "c",
         "*.inc": "c",
         "string_view": "c",
-        "file.h": "c"
+        "file.h": "c",
+        "cstdio": "c",
+        "memory_resource": "c",
+        "lib.h": "c",
+        "main.h": "c"
     }
 }

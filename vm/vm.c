@@ -184,6 +184,11 @@ vm_stack_growth (void *addr) {
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp (struct page *page UNUSED) {
+	void *kva = page->frame->kva;
+	page->frame->kva = palloc_get_page(PAL_USER);
+	memcpy(page->frame->kva, kva, PGSIZE);
+	pml4_set_page(thread_current()->pml4, page->va, page->frame->kva, page->writable);
+
 	return true;
 }
 
@@ -193,22 +198,36 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 	// struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	if(!not_present){
-		return false;
+	//printf("addr: %x, np: %d, wr: %d, usr: %d\n", (uint64_t)addr, not_present, write, user);
+	struct thread *curr = thread_current();
+	struct page *page = spt_find_page(&curr->spt, addr);
+
+	if(is_kernel_vaddr(addr))
+	{
+		exit(-1);
+		kill(f);
+	}
+	if(!not_present && write && page->writable && page){
+		return vm_handle_wp(page);
+	}
+	else if(!not_present && write && !(page->writable && page)){
+		exit(-1);
+		kill(f);
 	}
 
 	if(vm_claim_page(addr)){ // lazy load
 		return true;
 	}
 	else{
-		struct thread *curr = thread_current();
 		void *rsp_stack = is_kernel_vaddr(f->rsp) ? curr->rsp_stack : f->rsp;
 		if(rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){ // stack growth
 			vm_stack_growth(curr->stack_bottom - PGSIZE);
 			return true;
 		}
 		else{ // true page fault
-			return false;
+			//return false;
+			exit(-1);
+			kill(f);
 		}
 	}
 
@@ -277,17 +296,19 @@ supplemental_page_table_copy (struct supplemental_page_table *dst, struct supple
 		bool writable = page_src->writable;
 		vm_initializer *init = page_src->uninit.init;
 		void *aux = page_src->uninit.aux;
+
 		if(page_src->operations->type == VM_UNINIT){
 			if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
 				return false;
 		}
 		else{
-			if(!vm_alloc_page(type, upage, writable)){
+			if(!vm_alloc_page(type, upage, writable))
 				return false;
-			}
-			if(!vm_claim_page(upage)){
+			if(!vm_claim_page(upage))
 				return false;
-			}
+		}
+		if(page_src->operations->type != VM_UNINIT)
+		{
 			struct page *page_dst = spt_find_page(dst, upage);
 			memcpy(page_dst->frame->kva, page_src->frame->kva, PGSIZE);
 		}
@@ -305,8 +326,10 @@ supplemental_page_table_kill (struct supplemental_page_table *spt) {
 
 	while (hash_next(&itr)){
 		struct page *page = hash_entry(hash_cur(&itr), struct page, elem);
-		destroy(page);
+		if (page->operations->type == VM_FILE)
+			do_munmap(page->va);
 	}
+	hash_destroy(&spt->spt_hash, NULL);
 }
 
 /* Project 3*/
