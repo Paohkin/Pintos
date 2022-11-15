@@ -12,4 +12,5 @@ struct anon_page {
 void vm_anon_init (void);
 bool anon_initializer (struct page *page, enum vm_type type, void *kva);
 
+#define ERROR_IDX SIZE_MAX /* project 3*/
 #endif

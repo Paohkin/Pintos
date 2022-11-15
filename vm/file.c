@@ -70,18 +70,19 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva UNUSED)
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+	struct file_information *inf = &page->file_inf;
 	//printf("Case1\n");
-	if (file_page->file == NULL)
+	if (inf->file == NULL)
 	{
 		//printf("wlsWkdoalTlqkfsusdk\n");
 		return false;
 	}
 	//printf("Case2\n");
-	file_seek(file_page->file, file_page->ofs);
+	file_seek(inf->file, inf->ofs);
 	//printf("Case3\n");
-	lock_acquire(&file_lock);
-	off_t read_bytes = file_read(file_page->file, kva, file_page->size); 
-	lock_release(&file_lock);
+	//lock_acquire(&file_lock);
+	off_t read_bytes = file_read(inf->file, kva, inf->read_bytes); 
+	//lock_release(&file_lock);
 	//printf("kva: %x, rb: %x\n", (uint64_t)kva, read_bytes);
 	memset(kva+read_bytes, 0, PGSIZE-read_bytes);
 
@@ -92,15 +93,16 @@ file_backed_swap_in (struct page *page, void *kva) {
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	struct file_information *inf = &page->file_inf;
 	struct thread *curr = thread_current();
 
 	if (pml4_is_dirty(curr->pml4, page->va))
 	{
-		file_seek(file_page->file, file_page->ofs);
-		lock_acquire(&file_lock);
-		file_write(file_page->file, page->va, file_page->size);
-		lock_acquire(&file_lock);
-		//pml4_set_dirty(curr->pml4, page->va, false);
+		file_seek(inf->file, inf->ofs);
+		//lock_acquire(&file_lock);
+		file_write(inf->file, page->va, inf->read_bytes);
+		//lock_release(&file_lock);
+		pml4_set_dirty(curr->pml4, page->va, false);
 	}
 
 	pml4_clear_page(curr->pml4, page->va);
@@ -113,18 +115,21 @@ file_backed_swap_out (struct page *page) {
 static void
 file_backed_destroy (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	struct file_information *inf = &page->file_inf;
 	struct thread *curr = thread_current();
-
+	//destroy page\n");
 	if (pml4_is_dirty(curr->pml4, page->va))
 	{
-		file_seek(file_page->file, file_page->ofs);
-		lock_acquire(&file_lock);
-		file_write(file_page->file, page->va, file_page->size);
-		lock_acquire(&file_lock);
+		//printf("dirty\n");
+		file_seek(inf->file, inf->ofs);
+		//lock_acquire(&file_lock);
+		file_write(inf->file, page->va, inf->read_bytes);
+		//lock_release(&file_lock);
 	}
-	file_close(file_page->file);
+	//file_close(inf->file);
 	if (page->frame != NULL)
 	{
+		//printf("frame is not null\n");
 		list_remove(&page->frame->frame_elem);
 		list_remove(&page->elem);
 		free(page->frame);
@@ -197,14 +202,14 @@ lazy_load_file (struct page *page, void *aux) {
 	struct file_information *inf = (struct file_information *)aux;
 
 	file_seek(inf->file, inf->ofs);
-	lock_acquire(&file_lock);
+	//lock_acquire(&file_lock);
 	page->file.size = file_read(inf->file, page->va, inf->read_bytes);
-	lock_release(&file_lock);
+	//lock_release(&file_lock);
 	page->file.ofs = inf->ofs;
 
 	//if (page->file.size != PGSIZE)
 	//	memset(page->va + page->file.size, 0, PGSIZE - page->file.size);
-	//pml4_set_dirty(thread_current()->pml4, page->va, false);
+	pml4_set_dirty(thread_current()->pml4, page->va, false);
 	free(inf);
 
 	return true;

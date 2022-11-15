@@ -700,17 +700,32 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	//printf("lazy load segment\n");
 	struct file *file = ((struct file_information *)aux)->file;
 	off_t offset = ((struct file_information *)aux)->ofs;
 	size_t page_read_bytes = ((struct file_information *)aux)->read_bytes;
 	size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	file_seek(file, offset);
-
-	if(file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes){
-		palloc_free_page(page->frame->kva);
-		return false;
+	//printf("ll uninit type : %d\n", page->uninit.type);
+	if (page_read_bytes > 0)
+	{
+		file_seek(file, offset);
+	
+		if(file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes)
+		{
+			vm_dealloc_page(page);
+			//palloc_free_page(page->frame->kva);
+			return false;
+		}
 	}
-	memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
+	/*file_seek(file, offset);
+	
+	if(file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes){
+		vm_dealloc_page(page);
+		//palloc_free_page(page->frame->kva);
+		return false;
+	}*/
+	memset(page->va + page_read_bytes, 0, page_zero_bytes);
+	//file_close(file);
 	return true;
 }
 
@@ -747,7 +762,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		aux->file = file;
 		aux->ofs = ofs;
 		aux->read_bytes = page_read_bytes;
-		if(!vm_alloc_page_with_initializer(VM_ANON, upage, writable, lazy_load_segment, aux)){
+		ASSERT(aux != NULL);
+		if(!vm_alloc_page_with_initializer(VM_ANON, upage, writable, lazy_load_segment, (void *)aux)){
 			return false;
 		}
 

@@ -51,10 +51,24 @@ uninit_initialize (struct page *page, void *kva) {
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
 	void *aux = uninit->aux;
-	//printf("wlsWKroasd;fsdlsdf\n");
-	//printf("dkdkdkdk type: %d, kva: %x\n", uninit->type, (uint64_t)kva);
+	//printf("dkdkdkdk type: %d, va: %x, kva: %x\n", uninit->type, (uint64_t)page->va, (uint64_t)kva);
 	//init ? printf("Yes\n") : printf("No\n");
+	//printf("page: %x, aux: %x\n", &page, &aux);
 	/* TODO: You may need to fix this function. */
+	bool succ1 = uninit->page_initializer (page, uninit->type, kva);
+	//printf("tlqkf type : %d\n", uninit->type);
+	//printf("init1 success\n");
+	//printf("page: %x\n", page);
+	//printf("aux: %x\n", aux);
+	ASSERT(page != NULL);
+	ASSERT(init ? aux != NULL : true);
+	//printf("page: %x\n", page);
+	//printf("init : %x\n", init);
+	//printf("spt find: %x\n", spt_find_page(&thread_current()->spt, page->va));
+	//printf("real last uninit type : %d\n", uninit->type);
+	bool succ2 = init ? init (page, aux) : true;
+	//printf("init2 success\n");
+	return succ1 && succ2;
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }

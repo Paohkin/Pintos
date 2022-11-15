@@ -65,6 +65,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
 		struct page *page = (struct page *)malloc(sizeof(struct page));
+		//printf("alloc page: %x\n", page);
 		if(VM_TYPE(type) == VM_ANON){
 			uninit_new(page, upage, init, type, aux, anon_initializer);
 		}
@@ -213,6 +214,7 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 	//printf("handle_fault: %x\n", (uint64_t)addr);
 	if(is_kernel_vaddr(addr))
 	{
+		//printf("is_kernel\n");
 		exit(-1);
 		kill(f);
 	}
@@ -220,6 +222,7 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 		return vm_handle_wp(page);
 	}
 	else if(!not_present && write && !(page->writable && page)){
+		//printf("!not_present\n");
 		exit(-1);
 		kill(f);
 	}
@@ -309,7 +312,7 @@ bool
 supplemental_page_table_copy (struct supplemental_page_table *dst, struct supplemental_page_table *src) {
 	struct hash_iterator itr;
 	hash_first(&itr, &src->spt_hash);
-	//printf("Tlqkfsusdk\n");
+	//printf("copy start\n");
 	ASSERT(dst != NULL);
 	ASSERT(src != NULL);
 	while (hash_next(&itr))
@@ -328,18 +331,17 @@ supplemental_page_table_copy (struct supplemental_page_table *dst, struct supple
 			break;
 		else if(page_src->operations->type == VM_UNINIT){
 			//printf("AKOTTAMUK\n");
-			vm_initializer *init = page_src->uninit.init;
-			void *aux = page_src->uninit.aux;
+			//vm_initializer *init = page_src->uninit.init;
+			//void *aux = page_src->uninit.aux;
 			if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
 				return false;
 		}
 		else{
 			//printf("Tlqkf type: %d, upage: %x, wr: %d\n", type, (uint64_t)upage, writable);
-			vm_initializer *init = page_src->uninit.init;
-			void *aux = (void *)page_src->file_inf;
+			//vm_initializer *init = page_src->uninit.init;
+			//void *aux = (void *)page_src->file_inf;
 			if(!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
 				return false;
-			//printf("Tlqkf2 type: %d, upage: %x, wr: %d\n", type, (uint64_t)upage, writable);
 			if(!vm_claim_page(upage))
 				return false;
 		}

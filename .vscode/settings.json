@@ -11,6 +11,8 @@
         "lib.h": "c",
         "main.h": "c",
         "loader.h": "c",
-        "vm.h": "c"
+        "vm.h": "c",
+        "*.tcc": "c",
+        "uninit.h": "c"
     }
 }
