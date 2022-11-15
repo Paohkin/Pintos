@@ -58,7 +58,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
-
+	//printf("alloc_page_with type: %d, upage: %x, wr: %d\n", type, (uint64_t)upage, writable);
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
 		/* TODO: Create the page, fetch the initialier according to the VM type,
@@ -175,10 +175,18 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr) {
-	if(vm_alloc_page_with_initializer(VM_ANON, addr, true, NULL, NULL)){
-		vm_claim_page(addr);
-		thread_current()->stack_bottom -= PGSIZE;
+	void *sp = pg_round_down(addr);
+
+	for (void *t = sp; t < USER_STACK; t += PGSIZE)
+	{
+		if (!vm_alloc_page(VM_ANON+VM_MARKER_0, t, true))
+			break;
 	}
+	vm_claim_page(sp);
+	//if(vm_alloc_page_with_initializer(VM_ANON, addr, true, NULL, NULL)){
+	//	vm_claim_page(addr);
+	//	thread_current()->stack_bottom -= PGSIZE;
+	//}
 }
 
 /* Handle the fault on write_protected page */
@@ -201,7 +209,8 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 	//printf("addr: %x, np: %d, wr: %d, usr: %d\n", (uint64_t)addr, not_present, write, user);
 	struct thread *curr = thread_current();
 	struct page *page = spt_find_page(&curr->spt, addr);
-
+	void *sp = pg_round_down(curr->rsp_stack);
+	//printf("handle_fault: %x\n", (uint64_t)addr);
 	if(is_kernel_vaddr(addr))
 	{
 		exit(-1);
@@ -214,11 +223,15 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 		exit(-1);
 		kill(f);
 	}
-
+	if ((sp-PGSIZE <= addr) && ((uintptr_t)addr < USER_STACK) && write)
+	{
+		vm_stack_growth(addr);
+		return true;
+	}
 	if(vm_claim_page(addr)){ // lazy load
 		return true;
 	}
-	else{
+	/*else{
 		void *rsp_stack = is_kernel_vaddr(f->rsp) ? curr->rsp_stack : f->rsp;
 		if(rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK){ // stack growth
 			vm_stack_growth(curr->stack_bottom - PGSIZE);
@@ -229,8 +242,10 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 			exit(-1);
 			kill(f);
 		}
-	}
-
+	}*/
+	//printf("FAIL?\n");
+	exit(-1);
+	kill(f);
 }
 
 /* Free the page.
@@ -248,7 +263,7 @@ vm_claim_page (void *va) {
 	/* TODO: Fill this function */
 	struct thread *curr = thread_current();
 	struct page *page = spt_find_page(&curr->spt, va);
-
+	//printf("vm_claim_page va: %x\n", (uint64_t)va);
 	if(page == NULL){
 		return false;
 	}
@@ -261,19 +276,25 @@ vm_claim_page (void *va) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-
+	//printf("vm_do_claim_page\n");
+	//printf("claim type: %d\n", page->uninit.type);
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	struct thread *curr = thread_current();
-
+	//printf("va: %x, kva: %x\n", page->va, frame->kva);
 	if(!pml4_set_page (curr->pml4, page->va, frame->kva, page->writable)){
+		//printf("false\n");
 		return false;
 	}
 	else{
-		return swap_in(page, frame->kva);
+		//printf("swap\n");
+		bool temp = swap_in(page, frame->kva);
+		//printf("temp: %d\n", temp);
+		return temp;
+		//return swap_in(page, frame->kva);
 	}
 }
 
@@ -288,31 +309,50 @@ bool
 supplemental_page_table_copy (struct supplemental_page_table *dst, struct supplemental_page_table *src) {
 	struct hash_iterator itr;
 	hash_first(&itr, &src->spt_hash);
+	//printf("Tlqkfsusdk\n");
+	ASSERT(dst != NULL);
+	ASSERT(src != NULL);
 	while (hash_next(&itr))
 	{
+		//printf("****************************\n");
 		struct page *page_src = hash_entry(hash_cur(&itr), struct page, elem);
 		enum vm_type type = page_get_type(page_src);
 		void *upage = page_src->va;
 		bool writable = page_src->writable;
 		vm_initializer *init = page_src->uninit.init;
 		void *aux = page_src->uninit.aux;
-
-		if(page_src->operations->type == VM_UNINIT){
+		//printf("src_type: %d, src_uninit_type: %d, src_op_type: %d\n", type, page_src->uninit.type, page_src->operations->type);
+		//printf("upage: %x\n", (uint64_t)upage);
+		if (page_src->uninit.type - type == VM_MARKER_0)
+			//printf("BBLUEAR\n");
+			break;
+		else if(page_src->operations->type == VM_UNINIT){
+			//printf("AKOTTAMUK\n");
+			vm_initializer *init = page_src->uninit.init;
+			void *aux = page_src->uninit.aux;
 			if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
 				return false;
 		}
 		else{
-			if(!vm_alloc_page(type, upage, writable))
+			//printf("Tlqkf type: %d, upage: %x, wr: %d\n", type, (uint64_t)upage, writable);
+			vm_initializer *init = page_src->uninit.init;
+			void *aux = (void *)page_src->file_inf;
+			if(!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
 				return false;
+			//printf("Tlqkf2 type: %d, upage: %x, wr: %d\n", type, (uint64_t)upage, writable);
 			if(!vm_claim_page(upage))
 				return false;
 		}
+		//printf("&&&&&&&&&&&&&&&&&&&&&&&&&&\n");
 		if(page_src->operations->type != VM_UNINIT)
 		{
+			//printf("zaza\n");
 			struct page *page_dst = spt_find_page(dst, upage);
 			memcpy(page_dst->frame->kva, page_src->frame->kva, PGSIZE);
 		}
+		//printf("-----------------------------\n");
 	}
+	//printf("dldldldld\n");
 	return true;
 }
 

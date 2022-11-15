@@ -5,7 +5,8 @@ struct page;
 enum vm_type;
 
 struct anon_page {
-    struct thread *thread;
+    struct thread *prt;
+    size_t idx;
 };
 
 void vm_anon_init (void);

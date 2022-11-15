@@ -173,6 +173,7 @@ void exit (int status) {
 
 tid_t
 fork (const char *thread_name, struct intr_frame *f) {
+	//printf("thread name : %s\n", thread_name);
 	return process_fork(thread_name, f);
 }
 

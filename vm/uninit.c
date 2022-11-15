@@ -46,11 +46,14 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
+	//printf("uninit_init\n");
 
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
 	void *aux = uninit->aux;
-
+	//printf("wlsWKroasd;fsdlsdf\n");
+	//printf("dkdkdkdk type: %d, kva: %x\n", uninit->type, (uint64_t)kva);
+	//init ? printf("Yes\n") : printf("No\n");
 	/* TODO: You may need to fix this function. */
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
@@ -67,11 +70,9 @@ uninit_destroy (struct page *page) {
 	 * TODO: If you don't have anything to do, just return. */
 	struct thread *curr = thread_current();
 
-	if (page->frame != NULL)
-	{
-		list_remove(&page->frame->frame_elem);
-		list_remove(&page->elem);
-		free(page->frame);
-	}
+	//list_remove(&page->frame->frame_elem);
+	list_remove(&page->elem);
+	//free(page->frame);
+
 	return;
 }

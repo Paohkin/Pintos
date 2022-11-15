@@ -9,6 +9,8 @@
         "cstdio": "c",
         "memory_resource": "c",
         "lib.h": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "loader.h": "c",
+        "vm.h": "c"
     }
 }

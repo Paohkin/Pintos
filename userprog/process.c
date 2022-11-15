@@ -89,7 +89,9 @@ process_fork (const char *name, struct intr_frame *if_) {
 		return TID_ERROR;
 	}
 	struct thread *child = thread_child(pid);
+	//printf("sss\n");
 	sema_down(&child->fork_sema); // wait until fork finishes
+	//printf("ddd\n");
 	if(child->exit_status == -1){
 		return TID_ERROR;
 	}
@@ -732,7 +734,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-
+	//printf("load segment\n");
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -763,12 +765,12 @@ static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
-
+	//printf("setup stack!!!!!!!!!!!!!\n");
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	if(vm_alloc_page_with_initializer(VM_ANON, stack_bottom, true, NULL, NULL)){
+	if(vm_alloc_page_with_initializer(VM_ANON + VM_MARKER_0, stack_bottom, true, NULL, NULL)){
 		success = vm_claim_page(stack_bottom);
 		if(success){
 			if_->rsp = USER_STACK;

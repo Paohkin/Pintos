@@ -3,6 +3,7 @@
 #include "vm/vm.h"
 #include "threads/vaddr.h"
 #include "threads/mmu.h"
+#include "userprog/syscall.h"
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
@@ -28,13 +29,40 @@ vm_file_init (void) {
 
 /* Initialize the file backed page */
 bool
-file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
+file_backed_initializer (struct page *page, enum vm_type type, void *kva UNUSED) {
 	/* Set up the handler */
-	page->operations = &file_ops;
+	//printf("shangus va: %x kva: %x\n", (uint64_t)page->va, (uint64_t)kva);
+	/*page->operations = &file_ops;
+	printf("1111111111\n");
 	struct file_page *file_page = &page->file;
+	printf("22222222222222\n");
 	struct file *file = ((struct file_information *)page->uninit.aux)->file;
+	printf("33333333333333\n");
 	file_page->file = file;
-	
+	printf("??????????????????????????????\n");*/
+
+	struct uninit_page *uninit = &page->uninit;
+	struct file_information *file_inf;
+	void *aux = uninit->aux;
+	//printf("Case1\n");
+	page->operations = &file_ops;
+	page->file_inf = file_inf;
+	memset(uninit, 0, sizeof(struct uninit_page));
+	//printf("Case2\n");
+	//struct file_information *file_inf;
+	struct file_information *inf = (struct file_information *)aux;
+	//printf("Case3\n");
+	//ASSERT(file_page != NULL);
+	ASSERT(inf->file != NULL);
+	//printf("file back init ofs: %d, rb: %d\n", inf->ofs, inf->read_bytes);
+	page->file_inf->file = inf->file;
+	page->file_inf->ofs = inf->ofs;
+	page->file_inf->read_bytes = inf->read_bytes;
+
+	//file_page->file = inf->file;
+	//file_page->ofs = inf->ofs;
+	//file_page->size = inf->read_bytes;
+	//printf("???????????????\n");
 	return true;
 }
 
@@ -42,8 +70,19 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+	//printf("Case1\n");
+	if (file_page->file == NULL)
+	{
+		//printf("wlsWkdoalTlqkfsusdk\n");
+		return false;
+	}
+	//printf("Case2\n");
 	file_seek(file_page->file, file_page->ofs);
+	//printf("Case3\n");
+	lock_acquire(&file_lock);
 	off_t read_bytes = file_read(file_page->file, kva, file_page->size); 
+	lock_release(&file_lock);
+	//printf("kva: %x, rb: %x\n", (uint64_t)kva, read_bytes);
 	memset(kva+read_bytes, 0, PGSIZE-read_bytes);
 
 	return true;
@@ -58,8 +97,10 @@ file_backed_swap_out (struct page *page) {
 	if (pml4_is_dirty(curr->pml4, page->va))
 	{
 		file_seek(file_page->file, file_page->ofs);
+		lock_acquire(&file_lock);
 		file_write(file_page->file, page->va, file_page->size);
-		pml4_set_dirty(curr->pml4, page->va, false);
+		lock_acquire(&file_lock);
+		//pml4_set_dirty(curr->pml4, page->va, false);
 	}
 
 	pml4_clear_page(curr->pml4, page->va);
@@ -77,7 +118,9 @@ file_backed_destroy (struct page *page) {
 	if (pml4_is_dirty(curr->pml4, page->va))
 	{
 		file_seek(file_page->file, file_page->ofs);
+		lock_acquire(&file_lock);
 		file_write(file_page->file, page->va, file_page->size);
+		lock_acquire(&file_lock);
 	}
 	file_close(file_page->file);
 	if (page->frame != NULL)
@@ -108,6 +151,8 @@ do_mmap (void *addr, size_t length, int writable,
 		inf->ofs = ofs;
 		inf->read_bytes = read_bytes;
 		void *upage = (void *)((uint64_t)addr + i);
+		ASSERT(inf->file != NULL);
+		//printf("ofs: %d, rb: %d\n", inf->ofs, inf->read_bytes);
 		vm_alloc_page_with_initializer(VM_FILE, upage, writable, lazy_load_file, (void *)inf);
 	}
 
@@ -133,6 +178,7 @@ do_munmap (void *addr) {
 		{
 			for (uint64_t i = (uint64_t)addr; i < minf->end; i += PGSIZE)
 			{
+				//printf("unmap addr: %x\n", (uint64_t)i);
 				struct thread *curr = thread_current();
 				struct page *page = spt_find_page(&curr->spt, (void *)i);
 				spt_remove_page(&curr->spt, page);
@@ -151,12 +197,14 @@ lazy_load_file (struct page *page, void *aux) {
 	struct file_information *inf = (struct file_information *)aux;
 
 	file_seek(inf->file, inf->ofs);
+	lock_acquire(&file_lock);
 	page->file.size = file_read(inf->file, page->va, inf->read_bytes);
+	lock_release(&file_lock);
 	page->file.ofs = inf->ofs;
 
-	if (page->file.size != PGSIZE)
-		memset(page->va + page->file.size, 0, PGSIZE - page->file.size);
-	pml4_set_dirty(thread_current()->pml4, page->va, false);
+	//if (page->file.size != PGSIZE)
+	//	memset(page->va + page->file.size, 0, PGSIZE - page->file.size);
+	//pml4_set_dirty(thread_current()->pml4, page->va, false);
 	free(inf);
 
 	return true;
