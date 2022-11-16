@@ -113,7 +113,7 @@ do_mmap (void *addr, size_t length, int writable,
 
 	struct mmap_information *minf = malloc(sizeof(struct mmap_information));
 	minf->begin = (uint64_t)addr;
-	minf->end = (uint64_t)pg_round_down((uint64_t)addr + length);
+	minf->end = (uint64_t)pg_round_down((uint64_t)addr+length-1);
 	list_push_back(&mmap_list, &minf->elem);
 
 	return addr;
@@ -123,14 +123,15 @@ do_mmap (void *addr, size_t length, int writable,
 void
 do_munmap (void *addr) {
 	struct list_elem *e;
-
+	//printf("munmap addr: %x\n", (uint64_t)addr);
 	e = list_begin(&mmap_list);
 
 	while (e != list_end(&mmap_list))
 	{
 		struct mmap_information *minf = list_entry(e, struct mmap_information, elem);
 		if (minf->begin == (uint64_t)addr)
-		{
+		{	
+			//printf("end: %x\n", minf->end);
 			for (uint64_t i = (uint64_t)addr; i <= minf->end; i += PGSIZE)
 			{
 				struct thread *curr = thread_current();
