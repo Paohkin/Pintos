@@ -131,7 +131,7 @@ do_munmap (void *addr) {
 		struct mmap_information *minf = list_entry(e, struct mmap_information, elem);
 		if (minf->begin == (uint64_t)addr)
 		{
-			for (uint64_t i = (uint64_t)addr; i < minf->end; i += PGSIZE)
+			for (uint64_t i = (uint64_t)addr; i <= minf->end; i += PGSIZE)
 			{
 				struct thread *curr = thread_current();
 				struct page *page = spt_find_page(&curr->spt, (void *)i);
