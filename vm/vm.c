@@ -88,7 +88,7 @@ spt_find_page (struct supplemental_page_table *spt, void *va) {
 	struct hash_elem *e;
 
 	page->va = pg_round_down(va);
-	e = hash_find(&spt->spt_hash, &page->elem);
+	e = hash_find(spt->spt_hash, &page->elem);
 	free(page);
 
 	if(e == NULL){
@@ -104,7 +104,7 @@ bool
 spt_insert_page (struct supplemental_page_table *spt, struct page *page) {
 	// int succ = false;
 	/* TODO: Fill this function. */
-	struct hash_elem *succ = hash_insert(&spt->spt_hash, &page->elem);
+	struct hash_elem *succ = hash_insert(spt->spt_hash, &page->elem);
 	
 	if(succ == NULL){
 		return true;
@@ -280,14 +280,16 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt) {
-	hash_init(&spt->spt_hash, hash_func, less_func, NULL);
+	struct hash *spt_hash = malloc(sizeof(struct hash));
+	hash_init(spt_hash, hash_func, less_func, NULL);
+	spt->spt_hash = spt_hash;
 }
 
 /* Copy supplemental page table from src to dst */
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst, struct supplemental_page_table *src) {
 	struct hash_iterator itr;
-	hash_first(&itr, &src->spt_hash);
+	hash_first(&itr, src->spt_hash);
 	while (hash_next(&itr))
 	{
 		struct page *page_src = hash_entry(hash_cur(&itr), struct page, elem);
@@ -322,14 +324,14 @@ supplemental_page_table_kill (struct supplemental_page_table *spt) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	struct hash_iterator itr;
-	hash_first(&itr, &spt->spt_hash);
+	hash_first(&itr, spt->spt_hash);
 
 	while (hash_next(&itr)){
 		struct page *page = hash_entry(hash_cur(&itr), struct page, elem);
 		if (page->operations->type == VM_FILE)
 			do_munmap(page->va);
 	}
-	hash_destroy(&spt->spt_hash, NULL);
+	hash_destroy(spt->spt_hash, NULL);
 }
 
 /* Project 3*/
