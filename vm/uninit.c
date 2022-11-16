@@ -84,9 +84,9 @@ uninit_destroy (struct page *page) {
 	 * TODO: If you don't have anything to do, just return. */
 	struct thread *curr = thread_current();
 
-	//list_remove(&page->frame->frame_elem);
-	list_remove(&page->elem);
-	//free(page->frame);
 
+	list_remove(&page->elem);
+
+	
 	return;
 }
