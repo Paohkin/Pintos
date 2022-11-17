@@ -54,9 +54,7 @@ static bool less_func (const struct hash_elem *a, const struct hash_elem *b, voi
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
-
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. */
@@ -198,10 +196,8 @@ vm_try_handle_fault (struct intr_frame *f, void *addr, bool user UNUSED, bool wr
 	// struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	//printf("addr: %x, np: %d, wr: %d, usr: %d\n", (uint64_t)addr, not_present, write, user);
 	struct thread *curr = thread_current();
 	struct page *page = spt_find_page(&curr->spt, addr);
-
 	if(is_kernel_vaddr(addr))
 	{
 		exit(-1);
@@ -261,7 +257,6 @@ vm_claim_page (void *va) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
