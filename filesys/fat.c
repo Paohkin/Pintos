@@ -14,6 +14,7 @@ struct fat_boot {
 	unsigned int fat_start;
 	unsigned int fat_sectors; /* Size of FAT in sectors. */
 	unsigned int root_dir_cluster;
+	unsigned int free_blocks;
 };
 
 /* FAT FS */
@@ -24,6 +25,7 @@ struct fat_fs {
 	disk_sector_t data_start;
 	cluster_t last_clst;
 	struct lock write_lock;
+	unsigned int free_blocks;
 };
 
 static struct fat_fs *fat_fs;
@@ -147,16 +149,19 @@ fat_boot_create (void) {
 	    .fat_start = 1,
 	    .fat_sectors = fat_sectors,
 	    .root_dir_cluster = ROOT_DIR_CLUSTER,
+		.free_blocks = disk_size(filesys_disk) - fat_sectors - 4
 	};
 }
 
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
-	fat_fs->fat_length = fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE / (sizeof(cluster_t) * fat_fs->bs.secotrs_per_cluster);
-	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->fat_length;
-	fat_fs->last_clst = fat_fs->bs.fat_sectors - 1;
+	fat_fs->fat = NULL;
+	fat_fs->fat_length = fat_fs->bs.fat_sectors; // * DISK_SECTOR_SIZE / (sizeof(cluster_t) * fat_fs->bs.sectors_per_cluster)
+	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
+	fat_fs->last_clst = fat_fs->bs.total_sectors - 1;
 	lock_init(&fat_fs->write_lock);
+	fat_fs->free_blocks = fat_fs->bs.free_blocks;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -169,15 +174,19 @@ fat_fs_init (void) {
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
-	for(int i = 2; fat_get(i) != 0; i++){
+	int i;
+	for(i = 2; fat_get(i) != 0; i++){
+		// printf("why create so many chains\n");
 		if(i >= fat_fs->fat_length){
 			return 0;
 		}
 	}
+	// printf("escape\n");
 	fat_put(i, EOChain);
 	if(clst != 0){
 		fat_put(clst, i);
 	}
+	fat_fs->free_blocks -= 1;
 	return i;
 }
 
@@ -186,17 +195,21 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
-	cluster_t prev;
-	cluster_t now = clst;
-	while(fat_get(now) != EOChain){
-		prev = now;
-		now = fat_get(now);
-		fat_put(prev, 0);
-	}
-	fat_put(now, 0);
 	if(pclst != 0){
-		fat_put(clst, EOChain);
+		fat_put(pclst, EOChain);
 	}
+
+	cluster_t prev;
+	cluster_t cur = clst;
+	while(fat_get(cur) != EOChain){
+		prev = cur;
+		cur = fat_get(cur);
+		fat_put(prev, 0);
+		fat_fs->free_blocks += 1;
+	}
+	printf("why delete so many chains");
+	fat_put(cur, 0);
+	fat_fs->free_blocks += 1;
 }
 
 /* Update a value in the FAT table. */
@@ -218,4 +231,8 @@ disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
 	return fat_fs->data_start + clst; // or just return clst;
+}
+
+size_t free_blocks_num(void){
+	return fat_fs->free_blocks;
 }

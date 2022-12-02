@@ -7,6 +7,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "devices/disk.h"
+#include "filesys/fat.h"
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -59,14 +60,17 @@ filesys_done (void) {
  * or if internal memory allocation fails. */
 bool
 filesys_create (const char *name, off_t initial_size) {
-	disk_sector_t inode_sector = 0;
+	disk_sector_t inode_sector = fat_create_chain(0);
 	struct dir *dir = dir_open_root ();
+	printf("filesys_create began\n");
 	bool success = (dir != NULL
-			&& free_map_allocate (1, &inode_sector)
+			&& inode_sector // !inode_sector?
 			&& inode_create (inode_sector, initial_size)
-			&& dir_add (dir, name, inode_sector));
-	if (!success && inode_sector != 0)
-		free_map_release (inode_sector, 1);
+			&& dir_add (dir, name, inode_sector)); 
+	printf("filesys_create complete\n");
+	if(!success){
+		fat_remove_chain(inode_sector, 0);
+	}
 	dir_close (dir);
 
 	return success;
@@ -110,6 +114,9 @@ do_format (void) {
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
 	fat_create ();
+	if(!dir_create(ROOT_DIR_SECTOR, 16)){
+		PANIC("root directory creation failed");
+	}
 	fat_close ();
 #else
 	free_map_create ();

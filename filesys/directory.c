@@ -147,10 +147,12 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	 * inode_read_at() will only return a short read at end of file.
 	 * Otherwise, we'd need to verify that we didn't get a short
 	 * read due to something intermittent such as low memory. */
-	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
-			ofs += sizeof e)
-		if (!e.in_use)
+	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e; ofs += sizeof e){
+		printf("djelRKwl readgkskdy?\n");
+		if (!e.in_use){
 			break;
+		}
+	}
 
 	/* Write slot. */
 	e.in_use = true;
