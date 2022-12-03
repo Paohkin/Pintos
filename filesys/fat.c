@@ -157,7 +157,7 @@ void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
 	fat_fs->fat = NULL;
-	fat_fs->fat_length = fat_fs->bs.fat_sectors; // * DISK_SECTOR_SIZE / (sizeof(cluster_t) * fat_fs->bs.sectors_per_cluster)
+	fat_fs->fat_length = fat_fs->bs.fat_sectors;
 	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
 	fat_fs->last_clst = fat_fs->bs.total_sectors - 1;
 	lock_init(&fat_fs->write_lock);
@@ -200,15 +200,14 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	}
 
 	cluster_t prev;
-	cluster_t cur = clst;
-	while(fat_get(cur) != EOChain){
-		prev = cur;
-		cur = fat_get(cur);
+	while(fat_get(clst) != EOChain){
+		prev = clst;
+		clst = fat_get(clst);
 		fat_put(prev, 0);
 		fat_fs->free_blocks += 1;
 	}
-	printf("why delete so many chains");
-	fat_put(cur, 0);
+	// printf("why delete so many chains");
+	fat_put(clst, 0);
 	fat_fs->free_blocks += 1;
 }
 

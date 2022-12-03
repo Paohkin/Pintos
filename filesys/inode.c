@@ -91,29 +91,27 @@ inode_create (disk_sector_t sector, off_t length) {
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
 		if (free_blocks_num() >= sectors) {
+			disk_inode->start = fat_create_chain(0); // for file growth
 			disk_write (filesys_disk, sector, disk_inode);
 			if (sectors > 0) {
 				static char zeros[DISK_SECTOR_SIZE];
 				size_t i;
 
-				disk_inode->start = fat_create_chain(0); // new chain
-				disk_write(filesys_disk, sector, disk_inode);
-
 				disk_sector_t prev = disk_inode->start;
-				disk_write(filesys_disk, prev, zeros);
+				disk_write(filesys_disk, cluster_to_sector(prev), zeros);
 
 				for(i = 1; i < sectors; i++){
 					disk_sector_t cur = fat_create_chain(prev);
-					disk_write(filesys_disk, cur, zeros);
+					disk_write(filesys_disk, cluster_to_sector(cur), zeros);
 					prev = cur;
-					printf("fat_create_chain repeats %d times\n", i);
+					// printf("fat_create_chain repeats %d times\n", i);
 				}
 			}
 			success = true; 
 		} 
 		free (disk_inode);
 	}
-	printf("fat_create_chain loop escaped\n");
+	// printf("fat_create_chain loop escaped\n");
 	return success;
 }
 
@@ -205,6 +203,10 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
 
+	if(offset > inode_length(inode)){
+		return 0;
+	}
+
 	while (size > 0) {
 		/* Disk sector to read, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
@@ -259,6 +261,22 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
 	if (inode->deny_write_cnt)
 		return 0;
+
+	int cnt = 1;
+	int i;
+	disk_sector_t cur = inode->data.start;
+	while(fat_get(cur) != 0 && fat_get(cur) != EOChain){
+		cur = fat_get(cur);
+		cnt++;
+	}
+	if(inode_length(inode) < offset + size){
+		int sectors_to_make = bytes_to_sectors(offset + size) - cnt;
+		for(i = 0; i < sectors_to_make; i++){
+			cur = fat_create_chain(cur);
+		}
+		inode->data.length = offset + size;
+		disk_write(filesys_disk, inode->sector, &inode->data);
+	}
 
 	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */

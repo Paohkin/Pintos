@@ -85,8 +85,9 @@ lookup (const struct dir *dir, const char *name,
 	ASSERT (dir != NULL);
 	ASSERT (name != NULL);
 
-	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
-			ofs += sizeof e)
+	int tmp = 0; // frustrating...
+
+	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e; ofs += sizeof e){
 		if (e.in_use && !strcmp (name, e.name)) {
 			if (ep != NULL)
 				*ep = e;
@@ -94,6 +95,12 @@ lookup (const struct dir *dir, const char *name,
 				*ofsp = ofs;
 			return true;
 		}
+		tmp++;
+		if(tmp >= 16){ // Assume that only 16 dir_entry exists in root_dir
+			return false;
+		}
+		// printf("%d %d\n", inode_read_at (dir->inode, &e, sizeof e, ofs), sizeof e);
+	}
 	return false;
 }
 
@@ -139,7 +146,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	/* Check that NAME is not in use. */
 	if (lookup (dir, name, NULL, NULL))
 		goto done;
-
+	
 	/* Set OFS to offset of free slot.
 	 * If there are no free slots, then it will be set to the
 	 * current end-of-file.
@@ -148,7 +155,6 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	 * Otherwise, we'd need to verify that we didn't get a short
 	 * read due to something intermittent such as low memory. */
 	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e; ofs += sizeof e){
-		printf("djelRKwl readgkskdy?\n");
 		if (!e.in_use){
 			break;
 		}
