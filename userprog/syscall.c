@@ -50,6 +50,11 @@ unsigned tell(int);
 void close(int);
 void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap(void *addr);
+bool chdir(const char *);
+bool mkdir(const char *);
+bool readdir(int, char *);
+bool isdir(int);
+int inumber(fd);
 
 void
 is_valid_vaddr(void *addr){
@@ -153,7 +158,18 @@ syscall_handler (struct intr_frame *f) {
 			f->R.rax = mmap(args[0], args[1], args[2] ,args[3] ,args[4]);
 			break;
 		case SYS_MUNMAP: //15
-			munmap(args[0]);
+			break;
+		case SYS_CHDIR: //16
+			break;
+		case SYS_MKDIR: //16
+			break;
+		case SYS_READDIR: //18
+			break;
+		case SYS_ISDIR: //19
+			break;
+		case SYS_INUMBER: //20
+			break;
+		case SYS_SYMLINK: //21
 			break;
 		default:
 			exit(-1);
@@ -223,7 +239,7 @@ open (const char *file) {
 	if(f == NULL){
 		return -1;
 	}
-
+	
 	struct thread *curr = thread_current();
 	int fid = 2;
 	struct file **ft = curr->fdt;
@@ -393,4 +409,34 @@ void
 void
 munmap(void *addr) {
 	do_munmap(addr);
+}
+
+bool 
+chdir(const char *dir){
+	/* temp code */
+	return true;
+}
+
+bool
+mkdir(const char *dir){
+	/* temp code */
+	return true;
+}
+
+bool
+readdir(int fd, char *name){
+	/* temp code */
+	return true;
+}
+
+bool
+isdir(int fd){
+	/* temp code */
+	return true;
+}
+
+int
+inumber(int fd){
+	/* temp code */
+	return 0;
 }

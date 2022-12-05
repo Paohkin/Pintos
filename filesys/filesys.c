@@ -60,17 +60,16 @@ filesys_done (void) {
  * or if internal memory allocation fails. */
 bool
 filesys_create (const char *name, off_t initial_size) {
-	disk_sector_t inode_sector = fat_create_chain(0);
+	cluster_t clst = fat_create_chain(0);
+	disk_sector_t inode_sector = cluster_to_sector(clst);
 	struct dir *dir = dir_open_root ();
-	//printf("filesys_create began\n");
 	bool success = (dir != NULL
-			&& inode_sector
+			&& clst != 0
 			&& inode_create (inode_sector, initial_size)
-			&& dir_add (dir, name, inode_sector)); 
-	//printf("filesys_create complete\n");
-	if(!success){
-		fat_remove_chain(inode_sector, 0);
-	}
+			&& dir_add (dir, name, inode_sector));
+	if (!success && clst != 0)
+		fat_remove_chain(sector_to_cluster(inode_sector), 0);
+
 	dir_close (dir);
 
 	return success;
@@ -89,7 +88,6 @@ filesys_open (const char *name) {
 	if (dir != NULL)
 		dir_lookup (dir, name, &inode);
 	dir_close (dir);
-
 	return file_open (inode);
 }
 
@@ -114,9 +112,8 @@ do_format (void) {
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
 	fat_create ();
-	if(!dir_create(ROOT_DIR_SECTOR, 16)){
-		PANIC("root directory creation failed");
-	}
+	if (!dir_create(cluster_to_sector(ROOT_DIR_CLUSTER), 16))
+		PANIC ("root directory creation failed");
 	fat_close ();
 #else
 	free_map_create ();
