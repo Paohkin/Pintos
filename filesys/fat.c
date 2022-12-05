@@ -197,19 +197,19 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
+	if(pclst){
+		fat_put(pclst, EOChain);
+	}
+
 	cluster_t nclst;
-	if (clst >= 2)
-	{
-		while (true)
-		{
+	if (clst >= 2){
+		while (true){
 			nclst = fat_get(clst);
 			fat_put(clst, 0);
 			if (nclst == EOChain)
-				break;
+				return;
 			clst = nclst;
 		}
-		if (pclst)
-			fat_put(pclst, EOChain);
 	}
 }
 

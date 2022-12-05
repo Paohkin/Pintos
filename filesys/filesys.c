@@ -81,47 +81,27 @@ filesys_create (const char *name, off_t initial_size){
 		args[token_cnt] = NULL;
 	}
 	
-	if(args[0] == NULL){
+	if(args[0] == NULL && !pathtype){
 		return false;
 	}
 
 	struct inode *inode = NULL;
 	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
-	if(pathtype){ // absolute path
-		curr_dir = dir_open_root();
-	}
-	else{
-		/* very basic relative path */
-		cluster_t clst = fat_create_chain(0);
-		disk_sector_t inode_sector = cluster_to_sector(clst);
-		curr_dir = dir_open_root ();
-		bool success = (curr_dir != NULL
-				&& clst != 0
-				&& inode_create (inode_sector, initial_size, false)
-				&& dir_add (curr_dir, args[0], inode_sector));
-		if (!success && clst != 0)
-			fat_remove_chain(sector_to_cluster(inode_sector), 0);
-
-		dir_close (curr_dir);
-		return success;
-		/* very basic relative path */
-		// ., .., and advanced relative path is left
-		// curr_dir = dir_reopen(thread_current()->curr_dir);
-	}
+	curr_dir = pathtype ? dir_open_root() : dir_reopen(thread_current()->curr_dir); // ., .., and advanced relative path is left
 
 	int i;
 	for(i = 0; i < 31 && (args[i] != NULL); i++){
 		if(args[i + 1] == NULL){
 			break;
 		}
+
 		if(!dir_lookup(curr_dir, args[i], &inode)){
 			dir_close(curr_dir);
-			return NULL;
+			return false;
 		}
-		//printf("condition check fail\n");
 		if(!inode_is_dir(inode)){
 			dir_close(curr_dir);
-			return NULL;
+			return false;
 		}
 
 		dir_close(curr_dir);
@@ -167,28 +147,13 @@ filesys_open (const char *name) {
 		args[token_cnt] = NULL;
 	}
 	
+	if(args[0] == NULL && !pathtype){
+		return NULL;
+	}
+
 	struct inode *inode = NULL;
 	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
-	if(pathtype){ // absolute path
-		curr_dir = dir_open_root();
-		if(args[0] == NULL){
-			inode = &curr_dir->inode;
-			dir_close(curr_dir);
-			return file_open(inode);
-		}
-	}
-	else{
-		/* very basic relative path */
-		struct dir *dir = dir_reopen(thread_current()->curr_dir);
-		if(dir != NULL){
-			dir_lookup(dir, name, &inode);
-		}
-		dir_close(dir);
-		return file_open(inode);
-		/* very basic relative path */
-		// ., .., and advanced relative path is left
-		// curr_dir = dir_reopen(thread_current()->curr_dir);
-	}
+	curr_dir = pathtype ? dir_open_root() : dir_reopen(thread_current()->curr_dir); // ., .., and advanced relative path is left
 	
 	int i;
 	for(i = 0; i < 31 && (args[i] != NULL); i++){
@@ -225,9 +190,68 @@ filesys_open (const char *name) {
  * or if an internal memory allocation fails. */
 bool
 filesys_remove (const char *name) {
-	struct dir *dir = dir_open_root ();
-	bool success = dir != NULL && dir_remove (dir, name);
-	dir_close (dir);
+	bool pathtype = (name[0] == '/') ? true : false;
+
+	char *tmp = (char *)malloc(strlen(name) + 1);
+    strlcpy(tmp, name, strlen(name) + 1);
+
+	char *args[32];
+	char *token, *save_ptr;
+	int token_cnt = 0;
+	token = strtok_r(tmp, "/", &save_ptr);
+	while(token != NULL){
+		args[token_cnt] = token;
+		token = strtok_r(NULL, "/", &save_ptr);
+		token_cnt++;
+	}
+	for(; token_cnt < 32; token_cnt++){
+		args[token_cnt] = NULL;
+	}
+	
+	if(args[0] == NULL && pathtype){ // prevent root from being removed
+		return false;
+	}
+	
+	struct inode *inode = NULL;
+	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
+	curr_dir = pathtype ? dir_open_root() : dir_reopen(thread_current()->curr_dir); // ., .., and advanced relative path is left
+
+	int i;
+	for(i = 0; i < 31 && (args[i] != NULL); i++){
+		if(args[i + 1] == NULL){
+			break;
+		}
+
+		if(!dir_lookup(curr_dir, args[i], &inode)){
+			dir_close(curr_dir);
+			return false;
+		}
+		if(!inode_is_dir(inode)){
+			dir_close(curr_dir);
+			return false;
+		}
+
+		dir_close(curr_dir);
+		curr_dir = dir_open(inode);
+	}
+
+	/* dir-rm-parent */
+	dir_lookup(curr_dir, args[i], &inode);
+	if(inode_is_dir(inode)){
+		struct dir *tmp_dir = dir_open(inode);
+		char *tmp = (char *)malloc(NAME_MAX + 1);
+		if(dir_readdir(tmp_dir, tmp) != NULL){
+			dir_close(inode);
+			free(tmp);
+			return false;
+		}
+		dir_close(inode);
+		free(tmp);
+	}
+	/* dir-rm-parent */
+
+	bool success = curr_dir != NULL && dir_remove (curr_dir, args[i]);
+	dir_close (curr_dir);
 
 	return success;
 }
@@ -254,45 +278,54 @@ do_format (void) {
 }
 
 bool 
-filesys_chdir(const char *dir){
-	if(dir == NULL){
+filesys_chdir(const char *name){
+	bool pathtype = (name[0] == '/') ? true : false;
+
+	char *tmp = (char *)malloc(strlen(name) + 1);
+    strlcpy(tmp, name, strlen(name) + 1);
+
+	char *args[32];
+	char *token, *save_ptr;
+	int token_cnt = 0;
+	token = strtok_r(tmp, "/", &save_ptr);
+	while(token != NULL){
+		args[token_cnt] = token;
+		token = strtok_r(NULL, "/", &save_ptr);
+		token_cnt++;
+	}
+	for(; token_cnt < 32; token_cnt++){
+		args[token_cnt] = NULL;
+	}
+	
+	if(args[0] == NULL && !pathtype){
 		return false;
 	}
-	char *curr_path = (char *)malloc(strlen(dir) + 1);
-	strlcpy(curr_path, dir, strlen(dir) + 1);
 
-	struct dir *curr_dir = calloc(1, sizeof *dir);
-	if(curr_path[0] == '/'){ // absolute path
-		curr_dir = dir_open_root();
-	}
-	else{ // relative path, ., .., etc
-		free(curr_path); // temp
-		return false; // temp
-		// curr_dir = dir_reopen(thread_current()->curr_dir);
-	}
-
-	char *token, *save_ptr;
 	struct inode *inode = NULL;
-	token = strtok_r(curr_path, "/", &save_ptr);
-	while (token != NULL){
-		if(!dir_lookup(curr_dir, token, &inode) || !inode_is_dir(inode)){
+	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
+	curr_dir = pathtype ? dir_open_root() : dir_reopen(thread_current()->curr_dir); // ., .., and advanced relative path is left
+	
+	int i;
+	for(i = 0; i < 31 && (args[i] != NULL); i++){
+		if(!dir_lookup(curr_dir, args[i], &inode)){
 			dir_close(curr_dir);
-			free(curr_path);
+			return false;
+		}
+		if(!inode_is_dir(inode)){
+			dir_close(curr_dir);
 			return false;
 		}
 
 		dir_close(curr_dir);
 		curr_dir = dir_open(inode);
-		if(curr_dir == NULL){
-			free(curr_path);
-			return false;
-		}
 
-		token = strtok_r(NULL, "/", &save_ptr);
+		if(args[i + 1] == NULL){
+			break;
+		}
 	}
+	
 	dir_close(thread_current()->curr_dir);
 	thread_current()->curr_dir = curr_dir;
-	free(curr_path);
 
 	return true;
 }
@@ -317,32 +350,13 @@ filesys_mkdir(const char *name){
 		args[token_cnt] = NULL;
 	}
 
-	if(args[0] == NULL){
+	if(args[0] == NULL && !pathtype){
 		return false;
 	}
 
 	struct inode *inode = NULL;
 	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
-	if(pathtype){ // absolute path
-		curr_dir = dir_open_root();
-	}
-	else{
-		/* very basic relative path */
-		cluster_t clst = fat_create_chain(0);
-		disk_sector_t inode_sector = cluster_to_sector(clst);
-		curr_dir = dir_open_root ();
-		bool success = (curr_dir != NULL
-				&& clst != 0
-				&& dir_create (inode_sector, 16)
-				&& dir_add (curr_dir, args[0], inode_sector));
-		if (!success && clst != 0)
-			fat_remove_chain(sector_to_cluster(inode_sector), 0);
-		dir_close (curr_dir);
-		return success;
-		/* very basic relative path */
-		// ., .., and advanced relative path is left
-		// curr_dir = dir_reopen(thread_current()->curr_dir);
-	}
+	curr_dir = pathtype ? dir_open_root() : dir_reopen(thread_current()->curr_dir); // ., .., and advanced relative path is left
 
 	int i;
 	for(i = 0; i < 31 && (args[i] != NULL); i++){
@@ -352,12 +366,11 @@ filesys_mkdir(const char *name){
 
 		if(!dir_lookup(curr_dir, args[i], &inode)){
 			dir_close(curr_dir);
-			return NULL;
+			return false;
 		}
-
 		if(!inode_is_dir(inode)){
 			dir_close(curr_dir);
-			return NULL;
+			return false;
 		}
 
 		dir_close(curr_dir);

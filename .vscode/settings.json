@@ -10,6 +10,8 @@
         "memory_resource": "c",
         "lib.h": "c",
         "main.h": "c",
-        "gdt.h": "c"
+        "gdt.h": "c",
+        "malloc.h": "c",
+        "ostream": "c"
     }
 }

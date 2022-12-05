@@ -21,10 +21,18 @@
 
 struct inode;
 
+/* A single directory entry. */
+struct dir_entry {
+	disk_sector_t inode_sector;         /* Sector number of header. */
+	char name[NAME_MAX + 1];            /* Null terminated file name. */
+	bool in_use;                        /* In use or free? */
+};
+
 /* A directory. */
 struct dir {
 	struct inode *inode;                /* Backing store. */
 	off_t pos;                          /* Current position. */
+	int contains;
 };
 
 /* Opening and closing directories. */

@@ -49,13 +49,14 @@ int write(int, const void *, unsigned);
 void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
-void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void *mmap(void *, size_t, int, int, off_t);
 void munmap(void *addr);
 bool chdir(const char *);
 bool mkdir(const char *);
 bool readdir(int, char *);
 bool isdir(int);
-int inumber(fd);
+int inumber(int);
+int symlink(const char *, const char *);
 
 void
 is_valid_vaddr(void *addr){
@@ -161,17 +162,22 @@ syscall_handler (struct intr_frame *f) {
 		case SYS_MUNMAP: //15
 			break;
 		case SYS_CHDIR: //16
+			f->R.rax = chdir(args[0]);
 			break;
 		case SYS_MKDIR: //16
 			f->R.rax = mkdir(args[0]);
 			break;
 		case SYS_READDIR: //18
+			f->R.rax = readdir(args[0], args[1]);
 			break;
 		case SYS_ISDIR: //19
+			f->R.rax = isdir(args[0]);
 			break;
 		case SYS_INUMBER: //20
+			f->R.rax = inumber(args[0]);
 			break;
 		case SYS_SYMLINK: //21
+			f->R.rax = symlink(args[0], args[1]);
 			break;
 		default:
 			exit(-1);
@@ -435,12 +441,20 @@ readdir(int fd, char *name){
 
 bool
 isdir(int fd){
-	/* temp code */
-	return true;
+	struct thread *curr = thread_current();
+	struct file **fdt = curr->fdt;
+	return inode_is_dir(fdt[fd]->inode);
 }
 
 int
 inumber(int fd){
+	struct thread *curr = thread_current();
+	struct file **fdt = curr->fdt;
+	return fdt[fd]->inode->sector;
+}
+
+int
+symlink(const char *target UNUSED, const char *linkpath UNUSED){
 	/* temp code */
 	return 0;
 }

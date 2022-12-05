@@ -11,32 +11,12 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
-/* On-disk inode.
- * Must be exactly DISK_SECTOR_SIZE bytes long. */
-struct inode_disk {
-	disk_sector_t start;                /* First data sector. */
-	off_t length;                       /* File size in bytes. */
-	unsigned magic;                     /* Magic number. */
-	bool is_dir;
-	uint32_t unused[124];               /* Not used. */
-};
-
 /* Returns the number of sectors to allocate for an inode SIZE
  * bytes long. */
 static inline size_t
 bytes_to_sectors (off_t size) {
 	return DIV_ROUND_UP (size, DISK_SECTOR_SIZE);
 }
-
-/* In-memory inode. */
-struct inode {
-	struct list_elem elem;              /* Element in inode list. */
-	disk_sector_t sector;               /* Sector number of disk location. */
-	int open_cnt;                       /* Number of openers. */
-	bool removed;                       /* True if deleted, false otherwise. */
-	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-	struct inode_disk data;             /* Inode content. */
-};
 
 /* Returns the disk sector that contains byte offset POS within
  * INODE.
@@ -192,8 +172,8 @@ inode_close (struct inode *inode) {
 
 		/* Deallocate blocks if removed. */
 		if (inode->removed) {
-			fat_remove_chain(inode->sector, 0);
-			fat_remove_chain(inode->data.start, 0);
+			fat_remove_chain(sector_to_cluster(inode->sector), 0);
+			//fat_remove_chain(sector_to_cluster(inode->data.start), 0);
 		}
 
 		free (inode); 
