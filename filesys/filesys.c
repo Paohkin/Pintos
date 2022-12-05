@@ -30,8 +30,10 @@ filesys_init (bool format) {
 
 	if (format)
 		do_format ();
-
+	
 	fat_open ();
+
+	thread_current()->curr_dir = dir_open_root();
 #else
 	/* Original FS */
 	free_map_init ();
@@ -177,7 +179,7 @@ filesys_open (const char *name) {
 	}
 	else{
 		/* very basic relative path */
-		struct dir *dir = dir_open_root ();
+		struct dir *dir = dir_reopen(thread_current()->curr_dir);
 		if(dir != NULL){
 			dir_lookup(dir, name, &inode);
 		}
