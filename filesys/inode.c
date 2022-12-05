@@ -44,10 +44,14 @@ struct inode {
 static disk_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) {
 	ASSERT (inode != NULL);
-	if (pos < inode->data.length)
-		return inode->data.start + pos / DISK_SECTOR_SIZE;
-	else
-		return -1;
+	if(pos < inode_length(inode)){
+		cluster_t clst = sector_to_cluster(inode->data.start);
+		for(off_t i = 0; i < pos / DISK_SECTOR_SIZE; i++){
+			clst = fat_get(clst);
+		}
+		return cluster_to_sector(clst);
+	}
+	return -1;
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -274,15 +278,15 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
 	/* growth */
 	size_t added_size = 0;
-	cluster_t cclst = sector_to_cluster(inode->data.start);
-	while(fat_get(cclst) != 0 && fat_get(cclst) != EOChain){
-		cclst = fat_get(cclst);
+	cluster_t clst = sector_to_cluster(inode->data.start);
+	while(fat_get(clst) != 0 && fat_get(clst) != EOChain){
+		clst = fat_get(clst);
 		added_size++;
 	}
 	if(inode_length(inode) < offset + size){
-		size_t sectors_to_make = bytes_to_sectors(offset + size) - added_size;
-		for(size_t i = 0; i < sectors_to_make; i++){
-			cclst = fat_create_chain(cclst);
+		size_t added_sectors = bytes_to_sectors(offset + size) - added_size;
+		for(size_t i = 0; i < added_sectors; i++){
+			clst = fat_create_chain(clst);
 		}
 		inode->data.length = offset + size;
 		disk_write(filesys_disk, inode->sector, &inode->data);
