@@ -7,12 +7,6 @@
 #include "threads/malloc.h"
 #include "filesys/fat.h"
 
-/* A directory. */
-struct dir {
-	struct inode *inode;                /* Backing store. */
-	off_t pos;                          /* Current position. */
-};
-
 /* A single directory entry. */
 struct dir_entry {
 	disk_sector_t inode_sector;         /* Sector number of header. */
@@ -24,7 +18,7 @@ struct dir_entry {
  * given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) {
-	return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+	return inode_create (sector, entry_cnt * sizeof (struct dir_entry), true);
 }
 
 /* Opens and returns the directory for the given INODE, of which

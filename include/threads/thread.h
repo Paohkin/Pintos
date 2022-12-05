@@ -9,7 +9,7 @@
 #include "vm/vm.h"
 #endif
 #include "threads/synch.h"
-
+#include "filesys/directory.h"
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -138,6 +138,8 @@ struct thread {
 	void *stack_bottom;
 	void *rsp_stack;
 #endif
+
+	struct dir *curr_dir;
 
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */

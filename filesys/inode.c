@@ -17,7 +17,8 @@ struct inode_disk {
 	disk_sector_t start;                /* First data sector. */
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
-	uint32_t unused[125];               /* Not used. */
+	bool is_dir;
+	uint32_t unused[124];               /* Not used. */
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -70,7 +71,7 @@ inode_init (void) {
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
 bool
-inode_create (disk_sector_t sector, off_t length) {
+inode_create (disk_sector_t sector, off_t length, bool is_dir) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -85,6 +86,7 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		disk_inode->is_dir = is_dir;
 		
 		bool chain_succ = true;
 		cluster_t clst = sector_to_cluster(sector);
@@ -342,7 +344,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
 /* Disables writes to INODE.
    May be called at most once per inode opener. */
-	void
+void
 inode_deny_write (struct inode *inode) 
 {
 	inode->deny_write_cnt++;
@@ -363,4 +365,14 @@ inode_allow_write (struct inode *inode) {
 off_t
 inode_length (const struct inode *inode) {
 	return inode->data.length;
+}
+
+bool
+inode_is_dir(struct inode* inode){
+	bool res;
+	struct inode_disk *disk_inode = calloc(1, sizeof (struct inode_disk));
+	disk_read(filesys_disk, inode->sector, disk_inode);
+	res = disk_inode->is_dir;
+	free(disk_inode);
+	return res;
 }

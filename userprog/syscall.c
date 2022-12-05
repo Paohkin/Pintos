@@ -13,6 +13,7 @@
 #include "threads/palloc.h"
 #include "lib/string.h"
 #include "vm/file.h"
+#include "filesys/directory.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -162,6 +163,7 @@ syscall_handler (struct intr_frame *f) {
 		case SYS_CHDIR: //16
 			break;
 		case SYS_MKDIR: //16
+			f->R.rax = mkdir(args[0]);
 			break;
 		case SYS_READDIR: //18
 			break;
@@ -413,14 +415,16 @@ munmap(void *addr) {
 
 bool 
 chdir(const char *dir){
-	/* temp code */
-	return true;
+	return filesys_chdir(dir);
 }
 
 bool
 mkdir(const char *dir){
-	/* temp code */
-	return true;
+	is_valid_vaddr(dir);
+	lock_acquire(&file_lock);
+	bool ret = filesys_mkdir(dir);
+	lock_release(&file_lock);
+	return ret;
 }
 
 bool
