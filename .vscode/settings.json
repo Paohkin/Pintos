@@ -16,6 +16,14 @@
         "vector": "c",
         "functional": "c",
         "disk.h": "c",
-        "filesys.h": "c"
+        "filesys.h": "c",
+        "cstdlib": "c",
+        "exception": "c",
+        "fstream": "c",
+        "iosfwd": "c",
+        "new": "c",
+        "ostream": "c",
+        "sstream": "c",
+        "streambuf": "c"
     }
 }
