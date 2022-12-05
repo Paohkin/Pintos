@@ -63,10 +63,13 @@ bool
 filesys_create (const char *name, off_t initial_size){
 	bool pathtype = (name[0] == '/') ? true : false;
 
+	char *tmp = (char *)malloc(strlen(name) + 1);
+    strlcpy(tmp, name, strlen(name) + 1);
+
 	char *args[32];
 	char *token, *save_ptr;
 	int token_cnt = 0;
-	token = strtok_r(name, "/", &save_ptr);
+	token = strtok_r(tmp, "/", &save_ptr);
 	while(token != NULL){
 		args[token_cnt] = token;
 		token = strtok_r(NULL, "/", &save_ptr);
@@ -76,13 +79,14 @@ filesys_create (const char *name, off_t initial_size){
 		args[token_cnt] = NULL;
 	}
 	
+	if(args[0] == NULL){
+		return false;
+	}
+
 	struct inode *inode = NULL;
 	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
 	if(pathtype){ // absolute path
 		curr_dir = dir_open_root();
-		if(args[0] == NULL){
-			return false;
-		}
 	}
 	else{
 		/* very basic relative path */
@@ -145,10 +149,13 @@ struct file *
 filesys_open (const char *name) {
 	bool pathtype = (name[0] == '/') ? true : false;
 
+	char *tmp = (char *)malloc(strlen(name) + 1);
+    strlcpy(tmp, name, strlen(name) + 1);
+
 	char *args[32];
 	char *token, *save_ptr;
 	int token_cnt = 0;
-	token = strtok_r(name, "/", &save_ptr);
+	token = strtok_r(tmp, "/", &save_ptr);
 	while(token != NULL){
 		args[token_cnt] = token;
 		token = strtok_r(NULL, "/", &save_ptr);
@@ -292,10 +299,13 @@ bool
 filesys_mkdir(const char *name){
 	bool pathtype = (name[0] == '/') ? true : false;
 
+	char *tmp = (char *)malloc(strlen(name) + 1);
+    strlcpy(tmp, name, strlen(name) + 1);
+
 	char *args[32];
 	char *token, *save_ptr;
 	int token_cnt = 0;
-	token = strtok_r(name, "/", &save_ptr);
+	token = strtok_r(tmp, "/", &save_ptr);
 	while(token != NULL){
 		args[token_cnt] = token;
 		token = strtok_r(NULL, "/", &save_ptr);
@@ -304,14 +314,15 @@ filesys_mkdir(const char *name){
 	for(; token_cnt < 32; token_cnt++){
 		args[token_cnt] = NULL;
 	}
-	
+
+	if(args[0] == NULL){
+		return false;
+	}
+
 	struct inode *inode = NULL;
 	struct dir *curr_dir = calloc(1, sizeof *curr_dir);
 	if(pathtype){ // absolute path
 		curr_dir = dir_open_root();
-		if(args[0] == NULL){
-			return false;
-		}
 	}
 	else{
 		/* very basic relative path */
@@ -336,6 +347,7 @@ filesys_mkdir(const char *name){
 		if(args[i + 1] == NULL){
 			break;
 		}
+
 		if(!dir_lookup(curr_dir, args[i], &inode)){
 			dir_close(curr_dir);
 			return NULL;
@@ -349,15 +361,16 @@ filesys_mkdir(const char *name){
 		dir_close(curr_dir);
 		curr_dir = dir_open(inode);
 	}
+
 	cluster_t clst = fat_create_chain(0);
 	disk_sector_t inode_sector = cluster_to_sector(clst);
 	bool success = (curr_dir != NULL
 			&& clst != 0
 			&& dir_create (inode_sector, 16)
-			&& dir_add (curr_dir, args[0], inode_sector));
+			&& dir_add (curr_dir, args[i], inode_sector));
 	if (!success && clst != 0)
 		fat_remove_chain(sector_to_cluster(inode_sector), 0);
-
+	
 	dir_close (curr_dir);
 	return success;
 }
