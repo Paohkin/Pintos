@@ -273,8 +273,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		return 0;
 
 	/* growth */
-	size_t added_size = 1;
-	cluster_t cclst = inode->data.start;
+	size_t added_size = 0;
+	cluster_t cclst = sector_to_cluster(inode->data.start);
 	while(fat_get(cclst) != 0 && fat_get(cclst) != EOChain){
 		cclst = fat_get(cclst);
 		added_size++;
