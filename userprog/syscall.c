@@ -12,7 +12,7 @@
 #include "userprog/process.h"
 #include "threads/palloc.h"
 #include "lib/string.h"
-#include "vm/file.h"
+//#include "vm/file.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -147,12 +147,12 @@ syscall_handler (struct intr_frame *f) {
 		case SYS_CLOSE: //13
 			close(args[0]);
 			break;
-		case SYS_MMAP: //14
+		/*case SYS_MMAP: //14
 			f->R.rax = mmap(args[0], args[1], args[2] ,args[3] ,args[4]);
 			break;
 		case SYS_MUNMAP: //15
 			munmap(args[0]);
-			break;
+			break;*/
 		default:
 			exit(-1);
 	}
@@ -261,7 +261,7 @@ read (int fd, void *buffer, unsigned length) {
 	is_valid_vaddr(buffer + length - 1);
 	int size;
 
-	struct page *page = spt_find_page(&thread_current()->spt, buffer);
+	//struct page *page = spt_find_page(&thread_current()->spt, buffer);
 	if((fd < 0) || (fd >= FD_LIMIT) || (fd == STDOUT_FILENO)){
 		return -1;
 	}
@@ -276,10 +276,10 @@ read (int fd, void *buffer, unsigned length) {
 			}
 		}
 	}
-	else if(page->writable == false)
+	/*else if(page->writable == false)
 	{
 		exit(-1);
-	}
+	}*/
 	else{
 		struct thread *curr = thread_current();
 		struct file **fdt = curr->fdt;
@@ -357,7 +357,7 @@ close (int fd) {
 	fdt[fd] = NULL;
 	file_close(fdt[fd]);
 }
-
+/*
 void
 *mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
 	struct thread *curr = thread_current();
@@ -392,3 +392,4 @@ void
 munmap(void *addr) {
 	do_munmap(addr);
 }
+*/

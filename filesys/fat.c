@@ -131,7 +131,9 @@ fat_create (void) {
 	uint8_t *buf = calloc (1, DISK_SECTOR_SIZE);
 	if (buf == NULL)
 		PANIC ("FAT create failed due to OOM");
+	lock_acquire(&fat_fs->write_lock);
 	disk_write (filesys_disk, cluster_to_sector (ROOT_DIR_CLUSTER), buf);
+	lock_release(&fat_fs->write_lock);
 	free (buf);
 }
 
@@ -153,6 +155,15 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+	unsigned int sectors = fat_fs->bs.fat_sectors;
+	unsigned int start = fat_fs->bs.fat_start;
+	//printf("filesys disk : %d\n", disk_size(filesys_disk));
+	//printf("sectors: %d\n", sectors);
+	fat_fs->fat_length = disk_size(filesys_disk) - 1 - sectors;
+	fat_fs->data_start = start + sectors;
+	fat_fs->last_clst = fat_fs->fat_length;
+	lock_init(&fat_fs->write_lock);
+	//printf("length: %d, start: %d\n", fat_fs->fat_length, fat_fs->data_start);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -165,6 +176,20 @@ fat_fs_init (void) {
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	int i;
+	// What if clst == 1?
+	for (i = 2; fat_get(i) != 0; i++)
+	{
+		if (i == fat_fs->last_clst)
+			return 0; // Fail
+	}
+
+	fat_put(i, EOChain);
+
+	if (clst != 0)
+		fat_put(clst, i);
+
+	return i;
 }
 
 /* Remove the chain of clusters starting from CLST.
@@ -172,22 +197,45 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
+	cluster_t nclst;
+	if (clst >= 2)
+	{
+		while (true)
+		{
+			nclst = fat_get(clst);
+			fat_put(clst, 0);
+			if (nclst == EOChain)
+				break;
+			clst = nclst;
+		}
+		if (pclst)
+			fat_put(pclst, EOChain);
+	}
 }
 
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	fat_fs->fat[clst] = val;
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	return fat_fs->fat[clst];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	return fat_fs->data_start + clst*SECTORS_PER_CLUSTER;
+}
+
+/* Covert a sector # to a cluster number. */
+cluster_t
+sector_to_cluster (disk_sector_t sct) {
+	return (sct-fat_fs->data_start) / SECTORS_PER_CLUSTER;
 }

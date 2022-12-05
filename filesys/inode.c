@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "filesys/fat.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -74,20 +75,46 @@ inode_create (disk_sector_t sector, off_t length) {
 	/* If this assertion fails, the inode structure is not exactly
 	 * one sector in size, and you should fix that. */
 	ASSERT (sizeof *disk_inode == DISK_SECTOR_SIZE);
-
+	// What if sector == start? (failed to fat_create_chain)
 	disk_inode = calloc (1, sizeof *disk_inode);
 	if (disk_inode != NULL) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
-		if (free_map_allocate (sectors, &disk_inode->start)) {
+		
+		bool chain_succ = true;
+		cluster_t clst = sector_to_cluster(sector);
+		cluster_t pclst;
+		cluster_t cclst = clst;
+		cluster_t nclst;
+		int cnt = 0;
+
+		while (cnt <= sectors)
+		{
+			nclst = fat_create_chain(cclst);
+			if (!nclst)
+			{
+				chain_succ = false;
+				fat_remove_chain(clst, 0);
+				break;
+			}
+			pclst = cclst;
+			cclst = nclst;
+			cnt += 1;
+		}
+		disk_inode->start = cluster_to_sector(fat_get(clst));
+
+		if (chain_succ) {
 			disk_write (filesys_disk, sector, disk_inode);
 			if (sectors > 0) {
 				static char zeros[DISK_SECTOR_SIZE];
-				size_t i;
+				disk_sector_t start = disk_inode->start;
 
-				for (i = 0; i < sectors; i++) 
-					disk_write (filesys_disk, disk_inode->start + i, zeros); 
+				for (int i = 0; i < sectors; i++)
+				{
+					disk_write(filesys_disk, start, zeros);
+					start = cluster_to_sector(fat_get(sector_to_cluster(start)));
+				}
 			}
 			success = true; 
 		} 

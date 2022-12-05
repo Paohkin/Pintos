@@ -9,6 +9,13 @@
         "cstdio": "c",
         "memory_resource": "c",
         "lib.h": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "*.tcc": "c",
+        "deque": "c",
+        "string": "c",
+        "vector": "c",
+        "functional": "c",
+        "disk.h": "c",
+        "filesys.h": "c"
     }
 }
